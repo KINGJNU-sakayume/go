@@ -14,3 +14,9 @@ export function allTalismans(): TalismanDefinition[] {
 export function talismansOfRarity(rarity: Rarity): TalismanDefinition[] {
   return TALISMANS.filter((t) => t.rarity === rarity);
 }
+
+/** Test/debug hook: register an extra talisman definition at runtime. */
+export function registerTalisman(def: TalismanDefinition): void {
+  if (!INDEX.has(def.id)) TALISMANS.push(def);
+  INDEX.set(def.id, def);
+}

@@ -30,3 +30,19 @@ describe('balance (base deck, greedy bot)', () => {
     }
   });
 });
+
+import { botPlayRun } from './runBot';
+describe('full runs (greedy bot)', () => {
+  it('how far does a simple bot get', () => {
+    const N = Number(process.env.SIM_RUNS ?? 60);
+    const reached = new Array(13).fill(0);
+    const scoreByStage: number[][] = Array.from({ length: 12 }, () => []);
+    for (let i = 0; i < N; i++) {
+      const r = botPlayRun(newRun(`RUN-${i}`));
+      reached[r.reached]++;
+      r.scores.forEach((s, k) => s !== undefined && scoreByStage[k].push(s));
+    }
+    console.log('stages cleared distribution', reached.join(' '));
+    scoreByStage.forEach((arr, k) => arr.length && console.log(`stage ${k + 1} n=${arr.length} p50 ${pct(arr, 0.5)} p90 ${pct(arr, 0.9)} target ${STAGES[k].target}`));
+  });
+});

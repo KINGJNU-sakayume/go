@@ -32,7 +32,7 @@ export function newRun(seed: string, ruleOverrides: Partial<RulesConfig> = {}, n
     startingUids: cards.map((c) => c.uid),
     talismans: [],
     jokbo: freshJokboProgress(),
-    coins: 4,
+    coins: 8,
     stageIndex: 0,
     nodeCounter: 0,
     phase: 'stage',

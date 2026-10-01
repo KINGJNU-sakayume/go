@@ -7,11 +7,11 @@ import type { CardCategory, Rarity, ShopServiceKind, SpecialCaptureKind } from '
 export const BALANCE = {
   /** Score per captured card before multipliers (Pi is per Pi value). */
   captureBase: {
-    bright: 30,
-    animal: 18,
-    ribbon: 18,
-    pi: 9,
-    joker: 12,
+    bright: 40,
+    animal: 24,
+    ribbon: 24,
+    pi: 11,
+    joker: 15,
   } satisfies Record<CardCategory, number>,
 
   specialCapture: {
@@ -23,14 +23,14 @@ export const BALANCE = {
     chongtong: 300,
   } satisfies Record<SpecialCaptureKind, number>,
 
-  /** Card power granted by levels: Lv1 0, Lv2 5, Lv3 10, Lv4 15, Lv5 25, then +12 per level. */
+  /** Card power granted by levels: Lv1 0, Lv2 10, Lv3 20, Lv4 30, Lv5 50, then +25 per level. */
   levelPower(level: number): number {
     if (level <= 1) return 0;
-    if (level === 2) return 5;
-    if (level === 3) return 10;
-    if (level === 4) return 15;
-    if (level === 5) return 25;
-    return 25 + (level - 5) * 12;
+    if (level === 2) return 10;
+    if (level === 3) return 20;
+    if (level === 4) return 30;
+    if (level === 5) return 50;
+    return 50 + (level - 5) * 25;
   },
 
   /** Jokbo level multipliers: Lv1 ×1.0 … Lv5 ×3.0, then +0.85 per level. */
@@ -62,7 +62,7 @@ export const BALANCE = {
   illOmenMult: 0.75,
   greedyCoinLoss: 2,
 
-  stageCoins: [6, 6, 9, 7, 7, 11, 8, 8, 13, 9, 10, 0],
+  stageCoins: [8, 8, 12, 9, 9, 13, 10, 10, 15, 11, 12, 0],
   overkillCoinStep: 0.25,
   overkillCoinMax: 8,
   goCoinBonus: 0.5,
