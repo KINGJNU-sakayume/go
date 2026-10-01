@@ -1,0 +1,34 @@
+// Public game API. Importing this module registers all effect hooks and custom handlers.
+import './effects/hooks';
+import './effects/custom';
+import './engine/runEvents';
+
+export * from './types';
+export { DEFAULT_RULES, makeRules } from './config/rules';
+export { BALANCE } from './config/balance';
+export { Rng, deriveRng, hashString } from './rng/rng';
+export { generateSeed, normalizeSeed } from './rng/seed';
+export * from './cards/definitions';
+export { createStartingDeck, makeCard, cloneBase, clonePerfect, uidFor } from './cards/deck';
+export { ENHANCEMENTS, POSITIVE_ENHANCEMENTS } from './cards/enhancements';
+export { MUTATIONS, NEGATIVE_MUTATIONS } from './cards/mutations';
+export { JOKER_FORMS, ALL_JOKER_FORMS } from './cards/jokers';
+export { computeIdentity, toScoringProfile, CATEGORY_KO, categoryLabelKo } from './cards/identity';
+export { JOKBO_DEFS, RIBBON_SET_IDS } from './jokbo/definitions';
+export { evaluateJokbo, evaluateAllJokbo, maxDisjointSets } from './jokbo/evaluate';
+export { EVOLUTIONS, getEvolution, evolutionsFor } from './jokbo/evolutions';
+export { TALISMANS } from './talismans/definitions';
+export { getTalismanDef, allTalismans } from './talismans/registry';
+export { STAGES, getStageDef } from './stages/definitions';
+export { WEATHER_INFO } from './stages/weather';
+export { makeContext, viewOf, identityOf, profileOf, capturedProfiles, effectiveRules } from './effects/context';
+export { canMatch, getCaptureOptions, matchableFieldCards, getBombOptions } from './engine/match';
+export * from './engine/stage';
+export * from './engine/run';
+export * from './engine/operations';
+export { pushOp } from './engine/levelups';
+export { generateReward } from './rewards/rewards';
+export { generateShop, buyOffer, rerollShop, rerollPrice, currentPrice, removalPrice } from './shop/shop';
+export { EVENTS, getEventDef, createEventState, chooseEventOption } from './events/encounters';
+export * from './save/save';
+export { buildTitle } from './stats/buildTitle';
