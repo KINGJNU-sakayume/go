@@ -109,7 +109,7 @@ export type GameEventPayload =
   | { type: 'CARD_DUPLICATED'; cardUid: string; newUid: string }
   | { type: 'ITEM_PURCHASED'; service: string; price: number }
   | { type: 'MESSAGE'; text: string }
-  | { type: 'CUSTOM'; id: string; text?: string; cardUid?: string; jokboId?: JokboId; value?: number };
+  | { type: 'CUSTOM'; customId: string; text?: string; cardUid?: string; jokboId?: JokboId; value?: number };
 
 export type GameEventType = GameEventPayload['type'];
 

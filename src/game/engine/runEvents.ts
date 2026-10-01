@@ -48,7 +48,7 @@ function applyRunPayload(run: RunState, p: GameEventPayload): string[] {
       return [`카드 강화 Lv+${p.levels}`];
     }
     case 'CUSTOM': {
-      if (p.id === 'gainTalisman' && p.text && !run.talismans.some((t) => t.id === p.text)) {
+      if (p.customId === 'gainTalisman' && p.text && !run.talismans.some((t) => t.id === p.text)) {
         run.talismans.push({ id: p.text, counters: {}, acquiredAt: run.stageIndex });
         run.stats.talismansObtained.push(p.text);
         return [`부적 획득: ${allTalismans().find((t) => t.id === p.text)?.name ?? p.text}`];
@@ -75,6 +75,6 @@ registerCustomEffect('luckyPouch', (scope) => {
   const owned = new Set(run.talismans.map((t) => t.id));
   const commons = allTalismans().filter((t) => t.rarity === 'common' && !owned.has(t.id));
   const t = scope.ctx.rng.pickOrUndefined(commons);
-  if (t) return [{ type: 'CUSTOM', id: 'gainTalisman', text: t.id }];
+  if (t) return [{ type: 'CUSTOM', customId: 'gainTalisman', text: t.id }];
   return [{ type: 'COINS_GAINED', amount: 5 }];
 });

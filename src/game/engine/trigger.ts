@@ -597,7 +597,7 @@ function applyCore(ctx: GameContext, ev: GameEvent): CoreResult {
       return none;
     }
     case 'CUSTOM': {
-      const fn = CUSTOM_CORE[ev.id];
+      const fn = CUSTOM_CORE[ev.customId];
       return fn ? { before: fn(ctx, ev), after: [] } : none;
     }
     default:
@@ -732,7 +732,7 @@ function describeEvent(ctx: GameContext, ev: GameEvent): void {
       step(ctx, ev, 'info', ev.text, { tone: 'gray' });
       break;
     case 'CUSTOM':
-      if (ev.text && ev.id !== 'setWeather') step(ctx, ev, 'info', ev.text, { cardUid: ev.cardUid, tone: 'gray' });
+      if (ev.text && ev.customId !== 'setWeather') step(ctx, ev, 'info', ev.text, { cardUid: ev.cardUid, tone: 'gray' });
       break;
     default:
       break;

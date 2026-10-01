@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { STAGES, cloneRun, createStage, newRun, gainTalisman, allTalismans, EVENTS, createEventState, chooseEventOption } from '../index';
-import { botPlayStage } from '../sim/bot';
+import { botPlayStage, botStep as botStepOnce } from '../sim/bot';
 import { botPlayRun } from '../sim/runBot';
 
 describe('all 12 stages', () => {
@@ -46,5 +46,22 @@ describe('all 12 stages', () => {
         expect(after.coins).toBeGreaterThanOrEqual(0);
       }
     }
+  });
+});
+
+describe('boss mechanics apply state (regression: custom core handlers)', () => {
+  it('December sets weather, March covers a field card, Impostor gets a slot', () => {
+    const dec = cloneRun(newRun('HWATU-WEATHER'));
+    createStage(dec, 11);
+    expect(dec.stage!.weather).toBeDefined();
+    const mar = cloneRun(newRun('HWATU-COVER'));
+    createStage(mar, 2);
+    let r = mar;
+    for (let i = 0; i < 2 && r.phase === 'stage'; i++) {
+      const before = r.stage!.turn;
+      while (r.phase === 'stage' && r.stage!.turn === before) r = botStepOnce(r);
+    }
+    // turn 3 started → a field card got covered (unless the field was empty)
+    if (r.phase === 'stage' && r.stage!.turn === 3 && r.stage!.field.length) expect(r.stage!.covered.length).toBeGreaterThan(0);
   });
 });

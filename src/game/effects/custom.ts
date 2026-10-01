@@ -102,7 +102,7 @@ registerCustomEffect('impostorAssign', (scope) => {
   return [
     {
       type: 'CUSTOM',
-      id: 'assignImpostor',
+      customId: 'assignImpostor',
       cardUid: subject,
       jokboId: best.id,
       value: best.slot,
@@ -143,7 +143,7 @@ registerCustomEffect('twinSwap', (scope) => {
 registerCustomEffect('plumFrost', (scope) => {
   const ev = scope.event;
   if (!ev || ev.type !== 'CARD_PLACED') return [];
-  return [{ type: 'CUSTOM', id: 'frost', cardUid: ev.cardUid, text: `${identityOf(scope.ctx, ev.cardUid).name}: 서리 (파워 ×0.5)` }];
+  return [{ type: 'CUSTOM', customId: 'frost', cardUid: ev.cardUid, text: `${identityOf(scope.ctx, ev.cardUid).name}: 서리 (파워 ×0.5)` }];
 });
 
 registerCustomEffect('coverFieldCard', (scope) => {
@@ -152,10 +152,10 @@ registerCustomEffect('coverFieldCard', (scope) => {
   const candidates = stage.field.filter((u) => !stage.covered.includes(u));
   const pick = scope.ctx.rng.pickOrUndefined(candidates);
   if (!pick) return [];
-  return [{ type: 'CUSTOM', id: 'cover', cardUid: pick, text: '꽃잎 장막이 필드 카드 한 장을 가렸다' }];
+  return [{ type: 'CUSTOM', customId: 'cover', cardUid: pick, text: '꽃잎 장막이 필드 카드 한 장을 가렸다' }];
 });
 
-registerCustomEffect('swayBridge', () => [{ type: 'CUSTOM', id: 'shuffleField', text: '다리가 흔들려 필드 자리가 바뀌었다' }]);
+registerCustomEffect('swayBridge', () => [{ type: 'CUSTOM', customId: 'shuffleField', text: '다리가 흔들려 필드 자리가 바뀌었다' }]);
 
 registerCustomEffect('changeWeather', (scope) => {
   const stage = scope.ctx.stage;
@@ -163,7 +163,7 @@ registerCustomEffect('changeWeather', (scope) => {
   if (!stage || (stage.turn - 1) % every !== 0) return [];
   const options = ALL_WEATHER.filter((w) => w !== stage.weather);
   const next: Weather = scope.ctx.rng.pick(options);
-  return [{ type: 'CUSTOM', id: 'setWeather', text: next, value: 0 }, { type: 'MESSAGE', text: `날씨 변화: ${WEATHER_INFO[next].glyph} ${WEATHER_INFO[next].name} — ${WEATHER_INFO[next].description}` }];
+  return [{ type: 'CUSTOM', customId: 'setWeather', text: next, value: 0 }, { type: 'MESSAGE', text: `날씨 변화: ${WEATHER_INFO[next].glyph} ${WEATHER_INFO[next].name} — ${WEATHER_INFO[next].description}` }];
 });
 
 registerCustomEffect('boarCombo', (scope) => {
