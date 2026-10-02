@@ -334,8 +334,8 @@ export function createStage(run: RunState, stageIndex: number): void {
     const id = identityOf(ctx, u);
     if (id.joker) continue;
     if (id.bright) brights++;
-    if (!id.printedMonth) continue;
-    monthCounts.set(id.printedMonth, (monthCounts.get(id.printedMonth) ?? 0) + 1);
+    // same month basis as 흔들기 / 폭탄: every scoring month (갈라진 달 included)
+    for (const m of id.scoringMonths) monthCounts.set(m, (monthCounts.get(m) ?? 0) + 1);
   }
   let chongtong = false;
   for (const [m, n] of monthCounts) {
@@ -417,7 +417,7 @@ function resolveHandPlay(ctx: GameContext, uid: string, option: CaptureOption, s
   } else {
     const actionId = stage.nextActionId++;
     const months = sharedMonths(ctx, uid, option.targetUids, option.month);
-    stage.captureActions.push({ id: actionId, months });
+    stage.captureActions.push({ id: actionId, months, uids: [uid, ...option.targetUids] });
     stage.turnState.handCaptureMonths = months;
     stage.turnState.handCaptureSingle = option.kind === 'single';
     roots.push({ type: 'CARD_CAPTURED', cardUid: uid, from: 'hand', partnerUid: option.targetUids[0], actionId });
@@ -437,7 +437,7 @@ function resolveStockCapture(ctx: GameContext, s: string, option: CaptureOption,
   } else {
     const actionId = stage.nextActionId++;
     const months = sharedMonths(ctx, s, option.targetUids, option.month);
-    stage.captureActions.push({ id: actionId, months });
+    stage.captureActions.push({ id: actionId, months, uids: [s, ...option.targetUids] });
     const ts = stage.turnState;
     roots.push({ type: 'CARD_CAPTURED', cardUid: s, from: 'stock', partnerUid: option.targetUids[0], actionId });
     for (const t of option.targetUids) roots.push({ type: 'CARD_CAPTURED', cardUid: t, from: 'stock', partnerUid: s, actionId });
@@ -502,7 +502,7 @@ function resolveUniversal(ctx: GameContext, s: string, option: CaptureOption): v
   const roots: GameEventPayload[] = [{ type: 'CARD_CAPTURED', cardUid: s, from: 'service', partnerUid: option.targetUids[0], actionId }];
   for (const t of option.targetUids) roots.push({ type: 'CARD_CAPTURED', cardUid: t, from: 'service', partnerUid: s, actionId });
   roots.push(...stackSpecials(stage, option.targetUids, option.month, false));
-  stage.captureActions.push({ id: actionId, months: sharedMonths(ctx, s, option.targetUids, option.month) });
+  stage.captureActions.push({ id: actionId, months: sharedMonths(ctx, s, option.targetUids, option.month), uids: [s, ...option.targetUids] });
   processEvents(ctx, roots.map((payload) => ({ payload })));
 }
 
@@ -623,7 +623,7 @@ export function playBomb(run: RunState, month: Month): RunState {
   openChain(ctx, `${stage.turn}턴 · 폭탄 ${month}월`);
   for (const u of opt.handUids) stage.hand.splice(stage.hand.indexOf(u), 1);
   const actionId = stage.nextActionId++;
-  stage.captureActions.push({ id: actionId, months: [month] });
+  stage.captureActions.push({ id: actionId, months: [month], uids: [...opt.handUids, ...opt.fieldUids] });
   stage.turnState.handCaptureMonths = [month];
   stage.turnState.handCaptureSingle = false;
   stage.turnState.playedUid = opt.handUids[0];

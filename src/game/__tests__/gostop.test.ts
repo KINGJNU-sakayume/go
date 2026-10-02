@@ -4,6 +4,7 @@ import {
   BALANCE,
   JOKBO_DEFS,
   addCard,
+  addMutation,
   chooseTarget,
   createStage,
   deserializeRun,
@@ -182,6 +183,18 @@ describe('흔들기 / 폭탄 / 총통', () => {
     const st = run.stage!;
     expect(st.shakeCount).toBe(2);
     expect(st.chains.flatMap((c) => c.steps.map((s) => s.title))).toContain('총통!');
+  });
+
+  it('총통 counts scoring months (갈라진 달) the same way 흔들기 and 폭탄 do', () => {
+    const run = newRun('HWATU-CHONG2');
+    const keep = ['m01-bright', 'm01-ribbon'];
+    for (let m = 2; m <= 11; m++) keep.push(`m${m < 10 ? `0${m}` : m}-pi-a`, `m${m < 10 ? `0${m}` : m}-pi-b`);
+    keep.push('m12-animal', 'm12-doublepi');
+    run.deck = run.deck.filter((c) => keep.includes(c.defId));
+    for (const c of run.deck) if (!c.defId.startsWith('m01')) addMutation(run, c, { id: 'splitMoon', month: 1 });
+    createStage(run, 0);
+    // no printed month appears more than twice, but every card also counts as January
+    expect(run.stage!.chains.flatMap((c) => c.steps.map((s) => s.title))).toContain('총통!');
   });
 });
 

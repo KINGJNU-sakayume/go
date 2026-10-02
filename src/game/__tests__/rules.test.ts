@@ -119,11 +119,14 @@ describe('jokbo detection', () => {
     expect(points(run, 'pi', [...tenPi.slice(0, 8), 'm11-doublepi'])).toBe(1);
     expect(points(run, 'pi', [...tenPi.slice(0, 8), 'm11-doublepi', 'm12-doublepi'])).toBe(3);
   });
-  it('Animal and Ribbon counts; December ribbon excluded by default', () => {
+  it('Animal and Ribbon counts; the December (비) ribbon counts like the other nine', () => {
     expect(points(run, 'animal', ['m02-animal', 'm04-animal', 'm05-animal', 'm06-animal', 'm07-animal'])).toBe(1);
     expect(points(run, 'animal', ['m02-animal', 'm04-animal', 'm05-animal', 'm06-animal', 'm07-animal', 'm08-animal'])).toBe(2);
-    expect(points(run, 'ribbon', ['m01-ribbon', 'm02-ribbon', 'm03-ribbon', 'm04-ribbon', 'm12-ribbon'])).toBe(0);
+    expect(points(run, 'ribbon', ['m01-ribbon', 'm02-ribbon', 'm03-ribbon', 'm04-ribbon', 'm12-ribbon'])).toBe(1);
     expect(points(run, 'ribbon', ['m01-ribbon', 'm02-ribbon', 'm03-ribbon', 'm04-ribbon', 'm05-ribbon'])).toBe(1);
+    // the old house rule is still available as a switch
+    const old = newRun('HWATU-JOKBO', { rainRibbonCountsAsRibbon: false });
+    expect(points(old, 'ribbon', ['m01-ribbon', 'm02-ribbon', 'm03-ribbon', 'm04-ribbon', 'm12-ribbon'])).toBe(0);
   });
   it('duplicated set cards form additional disjoint sets', () => {
     expect(maxDisjointSets([1, 2, 4, 1, 2, 4], 3)).toBe(2);

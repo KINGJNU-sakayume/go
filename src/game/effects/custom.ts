@@ -1,7 +1,7 @@
 import type { GameEventPayload, JokboId, Month, Weather } from '../types';
 import { ALL_JOKBO } from '../types';
 import { registerCustomCondition, registerCustomEffect } from './customRegistry';
-import { capturedProfiles, effectiveRules, identityOf } from './context';
+import { capturedProfiles, effectiveRules, findCard, identityOf } from './context';
 import { scopeSubject, type EvalScope } from './evaluate';
 import { RANDOM_TEMP_ENHANCEMENTS } from './interpret';
 import { evaluateAllJokbo } from '../jokbo/evaluate';
@@ -108,6 +108,23 @@ registerCustomEffect('impostorAssign', (scope) => {
       value: best.slot,
       text: `사기꾼 조커 → ${label} 행세`,
     },
+  ];
+});
+
+/** 짐승 발자국: one step per capture action (a pair counts once), reset by an action without an animal. */
+registerCustomEffect('beastCombo', (scope) => {
+  const ev = scope.event;
+  const stage = scope.ctx.stage;
+  if (!ev || ev.type !== 'CARD_CAPTURED' || !stage || ev.actionId === undefined) return [];
+  const action = stage.captureActions.find((a) => a.id === ev.actionId);
+  if (!action?.uids?.length) return [];
+  if (stage.counters['beast:lastAction'] === action.id) return [];
+  const animal = action.uids.some((u) => !!findCard(scope.ctx, u) && identityOf(scope.ctx, u).animal);
+  const combo = stage.counters['animalCombo'] ?? 0;
+  if (!animal && combo === 0) return [];
+  return [
+    { type: 'COUNTER_CHANGED', counter: 'beast:lastAction', value: action.id, scope: 'stage' },
+    { type: 'COUNTER_CHANGED', counter: 'animalCombo', value: animal ? combo + 1 : 0, scope: 'stage' },
   ];
 });
 

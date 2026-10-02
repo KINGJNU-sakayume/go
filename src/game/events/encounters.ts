@@ -1,6 +1,8 @@
 import type { EventChoice, EventEncounterDefinition, EventState, OutcomeStep, RunState } from '../types';
 import { deriveRng, type Rng } from '../rng/rng';
 import { getCardDef } from '../cards/definitions';
+import { JOKBO_DEFS } from '../jokbo/definitions';
+import { ALL_JOKBO } from '../types';
 import { ENHANCEMENTS } from '../cards/enhancements';
 import { allTalismans, getTalismanDef } from '../talismans/registry';
 import { rollTalisman } from '../rewards/rewards';
@@ -354,6 +356,7 @@ export const EVENTS: EventDefinition[] = [
           disabled: run.coins < 6 ? '엽전 부족' : undefined,
           steps: [{ op: 'gamble', chance: 0.5, label: '술상 노름', win: [{ op: 'gainRandomTalisman', rarity: 'rare' }], lose: [{ op: 'message', text: '술값만 날렸다' }] }],
         },
+        { ...LEAVE, label: '술상을 지나친다' },
       ],
     }),
   },
@@ -378,6 +381,7 @@ export const EVENTS: EventDefinition[] = [
         ];
         const cage = !owned.has('birdcage') ? 'birdcage' : !owned.has('flock') ? 'flock' : undefined;
         if (cage) choices.push({ id: 'cage', label: `부적 「${getTalismanDef(cage)?.name}」`, description: getTalismanDef(cage)?.description ?? '', steps: [{ op: 'gainTalisman', talismanId: cage }] });
+        choices.push(LEAVE);
         return { title: '새떼', titleEn: 'Flock of Birds', text: '새들이 당신의 강화된 새 카드를 알아보고 내려앉는다.', choices, shownCards: [] };
       }
       return {
@@ -450,10 +454,16 @@ export const EVENTS: EventDefinition[] = [
     tags: ['economy'],
     setup: (run, rng) => {
       const t = rollTalisman(run, rng, { common: 0, uncommon: 0.4, rare: 0.5, mythic: 0.1 });
+      const secret = rng.pick(ALL_JOKBO);
       const goods: { label: string; description: string; price: number; steps: OutcomeStep[] }[] = [
         { label: '진짜 엽전 주머니', description: '엽전 15.', price: 4, steps: [{ op: 'gainCoins', amount: 15 }] },
         { label: '가짜 부적', description: '아무것도 없다. 오히려 무작위 카드에 저주.', price: 5, steps: [{ op: 'randomCurse' }] },
-        { label: '족보 비급', description: '무작위 족보 하나 Lv+2.', price: 7, steps: [{ op: 'randomRareReward' }] },
+        {
+          label: '족보 비급',
+          description: `${JOKBO_DEFS[secret].name} 족보 Lv+2.`,
+          price: 7,
+          steps: [{ op: 'upgradeJokboFixed', jokboId: secret, levels: 2 }],
+        },
       ];
       if (t) goods.push({ label: `부적 「${t.name}」`, description: t.description, price: 9, steps: [{ op: 'gainTalisman', talismanId: t.id }] });
       const picked = rng.sample(goods, 3);

@@ -109,6 +109,8 @@ export interface PpeokPile {
 export interface CaptureActionRecord {
   id: number;
   months: Month[];
+  /** Every card taken by this action (hand/stock card + its targets). Missing in v2 saves. */
+  uids?: string[];
 }
 
 export interface StageState {

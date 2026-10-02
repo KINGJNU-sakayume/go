@@ -49,6 +49,30 @@ describe('all 12 stages', () => {
   });
 });
 
+describe('event fixes', () => {
+  it('the swindler\'s 족보 비급 really is a +2 Jokbo upgrade', () => {
+    let found = 0;
+    for (let i = 0; i < 40; i++) {
+      const run = newRun(`HWATU-SW${i}`);
+      const ev = createEventState(run, 'swindler');
+      const secret = ev.choices.find((c) => c.label.includes('족보 비급'));
+      if (!secret) continue;
+      found++;
+      expect(secret.steps).toEqual([expect.objectContaining({ op: 'upgradeJokboFixed', levels: 2 })]);
+    }
+    expect(found).toBeGreaterThan(0);
+  });
+
+  it('the drinking table and the devoted flock can be walked away from', () => {
+    const run = newRun('HWATU-LEAVE');
+    expect(createEventState(run, 'drinkTable').choices.some((c) => c.id === 'leave')).toBe(true);
+    run.deck.find((c) => c.defId === 'm02-animal')!.enhancements.push({ id: 'golden', stacks: 1 });
+    const birds = createEventState(run, 'birds');
+    expect(birds.choices.some((c) => c.id === 'jokbo')).toBe(true);
+    expect(birds.choices.some((c) => c.id === 'leave')).toBe(true);
+  });
+});
+
 describe('boss mechanics apply state (regression: custom core handlers)', () => {
   it('December sets weather, March covers a field card, Impostor gets a slot', () => {
     const dec = cloneRun(newRun('HWATU-WEATHER'));
