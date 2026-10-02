@@ -25,6 +25,33 @@ export function talismanRarityWeights(stageIndex: number, bump: number): Record<
   };
 }
 
+const RETRIGGER_TALISMANS = ['moon-echo', 'broken-string', 'butterfly-dream', 'sword-cut', 'broken-mirror'];
+
+/** Does the run already have something that retriggers (메아리 강화, 메아리 조커, 재발동 진화·부적)? */
+export function hasRetriggerSource(run: RunState): boolean {
+  if (run.deck.some((c) => c.enhancements.some((e) => e.id === 'echo') || c.jokerForm === 'echo')) return true;
+  if (Object.values(run.jokbo).some((p) => p.evolutions.some((e) => e.endsWith('-endless') || e.endsWith('-echo')))) return true;
+  return run.talismans.some((t) => RETRIGGER_TALISMANS.includes(t.id));
+}
+
+/**
+ * Engine talismans do nothing until the engine exists. Offer them less often before that,
+ * so an early reward screen is not three dead picks.
+ */
+export function talismanReadiness(run: RunState, t: TalismanDefinition): number {
+  switch (t.id) {
+    case 'echo-drum':
+    case 'endless-rite':
+      return hasRetriggerSource(run) ? 1 : 0.35;
+    case 'empty-mask':
+      return run.deck.some((c) => c.jokerForm === 'empty') ? 1 : 0.35;
+    case 'chain-knot':
+      return run.talismans.length >= 3 ? 1 : 0.5;
+    default:
+      return 1;
+  }
+}
+
 /** Pick a talisman not yet owned. Talismans sharing tags with owned ones are slightly favoured. */
 export function rollTalisman(run: RunState, rng: Rng, weights: Record<Rarity, number>, exclude: string[] = []): TalismanDefinition | undefined {
   const owned = new Set([...run.talismans.map((t) => t.id), ...exclude]);
@@ -36,7 +63,7 @@ export function rollTalisman(run: RunState, rng: Rng, weights: Record<Rarity, nu
   return rng.weighted(
     pool.map((t) => ({
       item: t,
-      weight: weights[t.rarity] * (t.tags.some((g) => ownedTags.has(g)) ? 1.5 : 1),
+      weight: weights[t.rarity] * (t.tags.some((g) => ownedTags.has(g)) ? 1.5 : 1) * talismanReadiness(run, t),
     })),
   );
 }

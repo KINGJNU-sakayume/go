@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { setupStage, uidOf } from './helpers';
-import { gainTalisman, playCard } from '../index';
+import { TALISMANS, gainTalisman, newRun, playCard } from '../index';
+import { talismanReadiness } from '../rewards/rewards';
 
 describe('짐승 발자국 (beast tracks)', () => {
   const layout = {
@@ -27,5 +28,46 @@ describe('짐승 발자국 (beast tracks)', () => {
     const t3 = playCard(t2, uidOf(run, 'm11-pi-b'));
     expect(t3.stage!.captured).toContain(uidOf(run, 'm11-pi-a'));
     expect(t3.stage!.counters['animalCombo']).toBe(0);
+  });
+});
+
+describe('깨진 거울 (broken mirror)', () => {
+  function withCaptured(run: ReturnType<typeof setupStage>, defIds: string[]) {
+    const st = run.stage!;
+    for (const d of defIds) {
+      const u = uidOf(run, d);
+      st.stock = st.stock.filter((x) => x !== u);
+      st.captured.push(u);
+    }
+  }
+
+  it('retriggers a lone set Jokbo once at the end of the turn', () => {
+    const run = setupStage({ hand: ['m03-ribbon'], field: ['m03-pi-a', 'm07-pi-a'], stock: ['m11-pi-a'] }, (r) => gainTalisman(r, 'broken-mirror'));
+    withCaptured(run, ['m01-ribbon', 'm02-ribbon']);
+    const st = playCard(run, uidOf(run, 'm03-ribbon')).stage!;
+    expect(st.ledger.hongdan.triggers).toBe(2);
+    expect(st.ledger.hongdan.retriggers).toBe(1);
+  });
+
+  it('ignores count Jokbo (피·띠·열끗)', () => {
+    const run = setupStage({ hand: ['m05-pi-a'], field: ['m05-pi-b', 'm07-pi-a'], stock: ['m11-pi-a'] }, (r) => gainTalisman(r, 'broken-mirror'));
+    run.stage!.bonusPi = 9;
+    const st = playCard(run, uidOf(run, 'm05-pi-a')).stage!;
+    expect(st.ledger.pi.points).toBeGreaterThan(0);
+    expect(st.ledger.pi.retriggers).toBe(0);
+  });
+});
+
+describe('engine talismans are offered less before the engine exists', () => {
+  it('메아리 북 waits for a retrigger source, 빈 가면 for an Empty Joker', () => {
+    const run = newRun('HWATU-READY');
+    const drum = TALISMANS.find((t) => t.id === 'echo-drum')!;
+    const mask = TALISMANS.find((t) => t.id === 'empty-mask')!;
+    expect(talismanReadiness(run, drum)).toBeLessThan(1);
+    expect(talismanReadiness(run, mask)).toBeLessThan(1);
+    run.deck[3].enhancements.push({ id: 'echo', stacks: 1 });
+    run.deck.find((c) => c.defId === 'joker')!.jokerForm = 'empty';
+    expect(talismanReadiness(run, drum)).toBe(1);
+    expect(talismanReadiness(run, mask)).toBe(1);
   });
 });

@@ -475,9 +475,22 @@ function applyCore(ctx: GameContext, ev: GameEvent): CoreResult {
           stage.drunk++;
           if (stage.drunk >= 3) {
             stage.drunk = 0;
-            stage.hand = ctx.rng.shuffle(stage.hand);
+            // a random hand card is soaked: discarded and replaced from the stock (no exchange used)
+            const soaked = ctx.rng.pickOrUndefined(stage.hand);
+            const fresh = stage.stock[0];
+            if (!soaked || !fresh) return { before: [{ type: 'MESSAGE', text: '취기 3! 술잔이 엎어졌지만 젖은 패는 없다' }], after: [] };
+            const slot = stage.hand.indexOf(soaked);
+            stage.hand.splice(slot, 1, fresh);
+            stage.stock.shift();
+            stage.discard.push(soaked);
             stage.handOrderSeed++;
-            return { before: [{ type: 'MESSAGE', text: '취기 3! 손패가 뒤섞였다' }], after: [] };
+            return {
+              before: [
+                { type: 'MESSAGE', text: `취기 3! ${identityOf(ctx, soaked).name}이(가) 술에 젖어 버려지고 ${identityOf(ctx, fresh).name}을(를) 받았다` },
+                { type: 'CARD_DRAWN', cardUid: fresh, reason: 'refill' },
+              ],
+              after: [],
+            };
           }
           return { before: [{ type: 'MESSAGE', text: `취기 +1 (${stage.drunk}/3)` }], after: [] };
         }

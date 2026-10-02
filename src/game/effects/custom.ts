@@ -46,6 +46,14 @@ registerCustomCondition('consecutiveSameMonth', (scope) => {
   return cur.some((m) => prev.includes(m));
 });
 
+/** 깨진 거울: exactly one Jokbo type scored this turn, and it is not a count Jokbo (피·띠·열끗). */
+registerCustomCondition('onlyScoredIsSetJokbo', (scope) => {
+  const stage = scope.ctx.stage;
+  if (!stage) return false;
+  const ids = Array.from(new Set(stage.turnState.scoredJokbo));
+  return ids.length === 1 && JOKBO_DEFS[ids[0]].rule.kind !== 'count';
+});
+
 registerCustomCondition('placedFromHand', (scope) => {
   const ev = scope.event;
   return !!ev && ev.type === 'CARD_PLACED' && ev.from === 'hand';
@@ -160,7 +168,7 @@ registerCustomEffect('twinSwap', (scope) => {
 registerCustomEffect('plumFrost', (scope) => {
   const ev = scope.event;
   if (!ev || ev.type !== 'CARD_PLACED') return [];
-  return [{ type: 'CUSTOM', customId: 'frost', cardUid: ev.cardUid, text: `${identityOf(scope.ctx, ev.cardUid).name}: 서리 (파워 ×0.5)` }];
+  return [{ type: 'CUSTOM', customId: 'frost', cardUid: ev.cardUid, text: `${identityOf(scope.ctx, ev.cardUid).name}: 서리에 얼어붙음 (다음 턴까지 짝 불가)` }];
 });
 
 registerCustomEffect('coverFieldCard', (scope) => {
@@ -172,7 +180,7 @@ registerCustomEffect('coverFieldCard', (scope) => {
   return [{ type: 'CUSTOM', customId: 'cover', cardUid: pick, text: '꽃잎 장막이 필드 카드 한 장을 가렸다' }];
 });
 
-registerCustomEffect('swayBridge', () => [{ type: 'CUSTOM', customId: 'shuffleField', text: '다리가 흔들려 필드 자리가 바뀌었다' }]);
+registerCustomEffect('swayBridge', () => [{ type: 'CUSTOM', customId: 'bridgeDrop' }]);
 
 registerCustomEffect('changeWeather', (scope) => {
   const stage = scope.ctx.stage;

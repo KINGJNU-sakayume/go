@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { STAGES, cloneRun, createStage, newRun, gainTalisman, allTalismans, EVENTS, createEventState, chooseEventOption } from '../index';
+import { STAGES, cloneRun, createStage, newRun, gainTalisman, allTalismans, EVENTS, createEventState, chooseEventOption, playCard, handCaptureOptions } from '../index';
+import { setupStage, uidOf } from './helpers';
 import { botPlayStage, botStep as botStepOnce } from '../sim/bot';
 import { botPlayRun } from '../sim/runBot';
 
@@ -70,6 +71,50 @@ describe('event fixes', () => {
     const birds = createEventState(run, 'birds');
     expect(birds.choices.some((c) => c.id === 'jokbo')).toBe(true);
     expect(birds.choices.some((c) => c.id === 'leave')).toBe(true);
+  });
+});
+
+describe('month rules that change play', () => {
+  const titlesOf = (r: ReturnType<typeof setupStage>) => r.stage!.chains.flatMap((c) => c.steps.map((s) => s.title));
+
+  it('February frost: an unmatched hand card freezes — not even the stock card can take it (no 쪽)', () => {
+    const run = setupStage({ hand: ['m05-pi-a', 'm07-ribbon', 'm05-ribbon'], field: ['m07-pi-a'], stock: ['m05-pi-b', 'm11-pi-a', 'm12-animal'] });
+    run.stage!.stageIndex = 1;
+    const t1 = playCard(run, uidOf(run, 'm05-pi-a'));
+    const st = t1.stage!;
+    expect(st.captured).not.toContain(uidOf(run, 'm05-pi-a'));
+    expect(st.field).toEqual(expect.arrayContaining([uidOf(run, 'm05-pi-a'), uidOf(run, 'm05-pi-b')]));
+    expect(titlesOf(t1)).not.toContain('쪽!');
+    // turn 2: still frozen — the 5월 띠 can only take the stock-laid 5월 피
+    const opts = handCaptureOptions(t1, uidOf(run, 'm05-ribbon'));
+    expect(opts.flatMap((o) => o.targetUids)).toEqual([uidOf(run, 'm05-pi-b')]);
+  });
+
+  it('May bridge: every second turn a field card drops to the stock bottom and the stock top comes up', () => {
+    const run = setupStage({ hand: ['m02-pi-a', 'm04-pi-a'], field: ['m07-pi-a', 'm08-pi-a', 'm09-pi-a'], stock: ['m11-pi-a', 'm12-animal', 'm10-pi-a'] });
+    run.stage!.stageIndex = 4;
+    const t1 = playCard(run, uidOf(run, 'm02-pi-a')); // turn 2 starts → the bridge sways
+    const st = t1.stage!;
+    const dropped = st.stock[st.stock.length - 1];
+    expect([uidOf(run, 'm07-pi-a'), uidOf(run, 'm08-pi-a'), uidOf(run, 'm09-pi-a'), uidOf(run, 'm02-pi-a'), uidOf(run, 'm11-pi-a')]).toContain(dropped);
+    expect(st.field).toContain(uidOf(run, 'm12-animal'));
+    expect(titlesOf(t1).some((t) => t.startsWith('다리가 흔들려'))).toBe(true);
+  });
+
+  it('September drunk: at 취기 3 a hand card is soaked and replaced from the stock', () => {
+    const run = setupStage({ hand: ['m05-pi-a', 'm07-ribbon', 'm03-pi-a'], field: ['m08-pi-a'], stock: ['m05-pi-b', 'm11-pi-a', 'm12-animal'] });
+    run.stage!.stageIndex = 8;
+    run.stage!.drunk = 2;
+    run.stage!.scoredEffects = 2;
+    const st = playCard(run, uidOf(run, 'm05-pi-a')).stage!; // 쪽 scores a bonus → 취기 3
+    expect(st.discard).toHaveLength(1);
+    expect(st.hand).toHaveLength(2);
+    expect(st.hand).toContain(uidOf(run, 'm11-pi-a'));
+    expect(st.drunk).toBe(0);
+  });
+
+  it('stage targets rise every month', () => {
+    for (let i = 1; i < STAGES.length; i++) expect(STAGES[i].target).toBeGreaterThan(STAGES[i - 1].target);
   });
 });
 

@@ -14,6 +14,12 @@ export function canMatch(a: CardIdentity, b: CardIdentity): boolean {
   return false;
 }
 
+/** February frost: a frozen field card cannot be paired until it thaws. */
+export function isFrozen(ctx: GameContext, uid: string): boolean {
+  const until = ctx.stage?.temp[uid]?.frozenUntil;
+  return until !== undefined && until >= (ctx.stage?.turn ?? 0);
+}
+
 /** Stable identity used to collapse equivalent targets (two plain Pi of one month → no choice needed). */
 function targetSignature(ctx: GameContext, id: CardIdentity): string {
   const t = ctx.stage?.temp[id.card.uid];
@@ -39,7 +45,7 @@ function targetSignature(ctx: GameContext, id: CardIdentity): string {
 export function getCaptureOptions(ctx: GameContext, playedUid: string, fieldUids: string[]): CaptureOption[] {
   const played = identityOf(ctx, playedUid);
   const field = fieldUids.map((u) => identityOf(ctx, u));
-  const matches = field.filter((f) => canMatch(played, f));
+  const matches = field.filter((f) => canMatch(played, f) && !isFrozen(ctx, f.card.uid));
   if (!matches.length) return [{ id: 'place', kind: 'place', targetUids: [] }];
 
   const options: CaptureOption[] = [];
@@ -73,7 +79,7 @@ export function matchableFieldCards(ctx: GameContext, uid: string): string[] {
   const stage = ctx.stage;
   if (!stage) return [];
   const played = identityOf(ctx, uid);
-  return stage.field.filter((f) => !stage.covered.includes(f) && canMatch(played, identityOf(ctx, f)));
+  return stage.field.filter((f) => !stage.covered.includes(f) && !isFrozen(ctx, f) && canMatch(played, identityOf(ctx, f)));
 }
 
 export interface BombOption {
@@ -93,7 +99,7 @@ export function getBombOptions(ctx: GameContext): BombOption[] {
       return !id.joker && id.scoringMonths.includes(m);
     });
     if (hand.length < 3) continue;
-    const field = stage.field.filter((u) => identityOf(ctx, u).scoringMonths.includes(m));
+    const field = stage.field.filter((u) => !isFrozen(ctx, u) && identityOf(ctx, u).scoringMonths.includes(m));
     if (!field.length) continue;
     out.push({ month: m, handUids: hand, fieldUids: field });
   }

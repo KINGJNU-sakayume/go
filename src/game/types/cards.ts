@@ -99,6 +99,8 @@ export interface TempCardState {
   impostor?: { jokboId: JokboId; slotIndex: number; label: string };
   /** Moon Joker: month it represents this stage. */
   moonMonth?: Month;
+  /** February frost: this field card cannot be paired up to and including this turn. */
+  frozenUntil?: number;
 }
 
 export interface PowerPart {

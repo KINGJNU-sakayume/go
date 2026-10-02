@@ -77,7 +77,8 @@ describe('뻑', () => {
   });
 
   it('a second field card of the month makes it 따닥 instead (첫따닥 pays 엽전)', () => {
-    const run = setupStage({ hand: ['m01-bright'], field: ['m01-pi-a', 'm01-ribbon', 'm07-pi-a'], stock: ['m01-pi-b', 'm11-pi-a'] });
+    // a second hand card keeps the stage going (an empty hand would end — and maybe clear — it)
+    const run = setupStage({ hand: ['m01-bright', 'm05-pi-a'], field: ['m01-pi-a', 'm01-ribbon', 'm07-pi-a'], stock: ['m01-pi-b', 'm11-pi-a'] });
     const coins = run.coins;
     const waiting = playCard(run, uidOf(run, 'm01-bright'));
     const opt = waiting.stage!.pending!.options.find((o) => o.targetUids[0] === uidOf(run, 'm01-pi-a'))!;

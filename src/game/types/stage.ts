@@ -16,11 +16,11 @@ export interface StageModifierDefinition {
 export interface StageMechanics {
   /** March: every N turns a random field card is covered. */
   coverEvery?: number;
-  /** May: every N turns field positions swap (visual only). */
-  fieldSwapEvery?: number;
+  /** May: every N turns a field card falls off the bridge (to the stock bottom) and the stock top replaces it. */
+  bridgeDropEvery?: number;
   /** June: each retrigger reduces the next retrigger's base value by this fraction. */
   retriggerDecay?: number;
-  /** September: every N scored effects add one Drunk; at 3 Drunk the hand order is shuffled. */
+  /** September: every N scored effects add one Drunk; at 3 Drunk a random hand card is soaked and replaced. */
   drunkEvery?: number;
   /** October: every N Exchanges a random hand card gains a temporary enhancement. */
   exchangeEnhanceEvery?: number;
@@ -30,8 +30,8 @@ export interface StageMechanics {
   weatherEvery?: number;
   /** November: GO reward multiplier bonus. */
   goRewardBonus?: number;
-  /** February: first unmatched played card gets this power multiplier. */
-  firstUnmatchedPowerMult?: number;
+  /** February: unmatched hand cards freeze for this many turns (the turn they are laid down included). */
+  frostTurns?: number;
 }
 
 export interface GoHazard {
