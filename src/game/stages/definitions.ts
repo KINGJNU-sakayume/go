@@ -5,14 +5,14 @@ const NORMAL_GO: GoHazard = {
   lineMult: 1.3,
   coinBonusPerGo: BALANCE.goCoinBonus,
   bustCoinLoss: 0,
-  description: 'GO: 남은 턴 계속. 새 기준선 = 현재 점수 ×1.3. 기준선 미달로 끝나면 독박 — 이번 스테이지 엽전 보상을 잃음.',
+  description: '고: 남은 턴 계속. 새 기준선 = 현재 점수 ×1.3. 기준선 미달로 끝나면 독박 — 이번 스테이지 엽전 보상을 잃음.',
 };
 
 const BOSS_GO: GoHazard = {
   lineMult: 1.35,
   coinBonusPerGo: BALANCE.goCoinBonus,
   bustCoinLoss: 0,
-  description: 'GO: 새 기준선 = 현재 점수 ×1.35. 독박 시 엽전 보상을 잃음.',
+  description: '고: 새 기준선 = 현재 점수 ×1.35. 독박 시 엽전 보상을 잃음.',
 };
 
 /**
@@ -185,7 +185,7 @@ export const STAGES: StageDefinition[] = [
     target: 3700,
     coinReward: BALANCE.stageCoins[5],
     description: '보스. 나비 떼가 메아리를 흩트립니다.',
-    ruleText: ['리트리거가 일어날 때마다 다음 리트리거의 기본 점수가 12%씩 감소 (최저 40%).'],
+    ruleText: ['재발동이 일어날 때마다 다음 재발동의 기본 점수가 12%씩 감소 (최저 40%).'],
     modifiers: [],
     mechanics: { retriggerDecay: 0.12 },
     goHazard: BOSS_GO,
@@ -276,15 +276,15 @@ export const STAGES: StageDefinition[] = [
     boss: false,
     target: 21000,
     coinReward: BALANCE.stageCoins[10],
-    description: '고위험 스테이지. 목표를 넘긴 뒤 GO하면 보상이 크게 불어납니다.',
-    ruleText: ['GO 1회마다 엽전 보상 +100% (기본 +50%).', 'GO 성공 시 보상이 희귀 등급으로 상승.', '독박 시 엽전 보상을 잃고 보유 엽전의 30%도 잃음.'],
+    description: '고위험 스테이지. 목표를 넘긴 뒤 고를 외치면 보상이 크게 불어납니다.',
+    ruleText: ['고 1회마다 엽전 보상 +100% (기본 +50%).', '고 성공 시 보상이 희귀 등급으로 상승.', '독박 시 엽전 보상을 잃고 보유 엽전의 30%도 잃음.'],
     modifiers: [],
     mechanics: { goRewardBonus: 0.5 },
     goHazard: {
       lineMult: 1.4,
       coinBonusPerGo: 1.0,
       bustCoinLoss: 0.3,
-      description: 'GO: 새 기준선 = 현재 점수 ×1.4. 성공하면 엽전 ×2 이상. 독박이면 보상 상실 + 보유 엽전 30% 상실.',
+      description: '고: 새 기준선 = 현재 점수 ×1.4. 성공하면 엽전 ×2 이상. 독박이면 보상 상실 + 보유 엽전 30% 상실.',
     },
   },
   {

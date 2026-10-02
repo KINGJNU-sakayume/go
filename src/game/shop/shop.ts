@@ -26,7 +26,7 @@ const SERVICE_INFO: Record<ShopServiceKind, { title: string; description: string
   monthDye: { title: '달 염색', description: '카드 한 장의 달을 원하는 달로 바꿈.', rarity: 'uncommon' },
   ribbonDye: { title: '띠 염색', description: '띠 한 장을 원하는 홍단/청단/초단 칸으로 바꿈.', rarity: 'uncommon' },
   purify: { title: '정화', description: '카드 한 장의 저주(부정 효과) 하나를 제거.', rarity: 'common' },
-  enhancement: { title: '강화 인챈트', description: '', rarity: 'uncommon' },
+  enhancement: { title: '강화 부여', description: '', rarity: 'uncommon' },
   addJoker: { title: '조커 구입', description: '서비스 조커 1장을 덱에 추가.', rarity: 'uncommon' },
 };
 
@@ -75,7 +75,7 @@ function serviceOffer(run: RunState, rng: Rng, service: ShopServiceKind, idx: nu
       const enh = rng.pick(['reinforced', 'golden', 'echo', 'dualMonth', 'adjacentMonth', 'wildMonth', 'bloom', 'collector', 'catalyst', 'lucky', 'hollow'] as const);
       const def = ENHANCEMENTS[enh];
       const price = def.rarity === 'rare' ? 11 : def.rarity === 'uncommon' ? 8 : 5;
-      return { ...base, title: `인챈트: ${def.name}`, description: def.description, price, rarity: def.rarity, enhancement: enh };
+      return { ...base, title: `강화 부여: ${def.name}`, description: def.description, price, rarity: def.rarity, enhancement: enh };
     }
     case 'jokerWorkshop':
       return hasJoker(run) ? base : undefined;

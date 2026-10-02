@@ -6,7 +6,28 @@ export type TriggerReason = 'complete' | 'increment' | 'retrigger';
 
 export type CaptureFrom = 'hand' | 'stock' | 'service' | 'bomb' | 'effect';
 
-export type SpecialCaptureKind = 'jjok' | 'ttadak' | 'sweep' | 'stack' | 'bomb' | 'chongtong';
+/**
+ * Go-Stop special plays. Not all of them are captures: 첫뻑/연뻑/삼뻑 and 첫따닥 pay 엽전 the way the
+ * table pays money in the real game. What each one is worth (score / 피 뺏기 / 엽전) lives in `BALANCE`.
+ */
+export type SpecialCaptureKind =
+  | 'jjok'
+  | 'ttadak'
+  | 'firstTtadak'
+  | 'sweep'
+  | 'stack'
+  | 'ppeokEat'
+  | 'firstPpeok'
+  | 'chainPpeok'
+  | 'triplePpeok'
+  | 'bomb'
+  | 'chongtong';
+
+/** What declared 흔들기 this time: a plain shake, a bomb (counts as a shake) or 총통 (shake + bomb). */
+export type ShakeCause = 'shake' | 'bomb' | 'chongtong';
+
+/** 뻑 flavours: 첫뻑 (first turn), 연뻑 (two turns in a row), 삼뻑 (third of the stage). */
+export type PpeokKind = 'normal' | 'first' | 'chain' | 'triple';
 
 export interface ScoreEntry {
   source: string;
@@ -99,6 +120,9 @@ export type GameEventPayload =
   | { type: 'PREVIEW_GRANTED'; count: number }
   | { type: 'COINS_GAINED'; amount: number }
   | { type: 'SPECIAL_CAPTURE'; special: SpecialCaptureKind; month?: Month; count?: number }
+  | { type: 'PPEOK'; month: Month; cardUids: string[]; kind: PpeokKind }
+  | { type: 'SHAKE_DECLARED'; month?: Month; cause: ShakeCause }
+  | { type: 'PI_STOLEN'; amount: number; special?: SpecialCaptureKind }
   | { type: 'FLAG_CHANGED'; flag: string; value: boolean }
   | { type: 'COUNTER_CHANGED'; counter: string; value: number; scope: 'stage' | 'talisman' }
   | { type: 'PROFILE_COPIED'; cardUid: string; fromUid: string }

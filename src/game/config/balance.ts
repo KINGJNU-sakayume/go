@@ -14,14 +14,42 @@ export const BALANCE = {
     joker: 15,
   } satisfies Record<CardCategory, number>,
 
+  /** Bonus score for Go-Stop special plays (0 = no score, the play pays 피 or 엽전 instead). */
   specialCapture: {
     jjok: 70,
     ttadak: 100,
+    firstTtadak: 0,
     sweep: 180,
     stack: 120,
+    ppeokEat: 220,
+    firstPpeok: 0,
+    chainPpeok: 0,
+    triplePpeok: 300,
     bomb: 160,
     chongtong: 300,
   } satisfies Record<SpecialCaptureKind, number>,
+
+  /** 피 뺏기: bonus 피 (counted by the 피 Jokbo) — the table pays 피 for these in the real game. */
+  specialPi: {
+    jjok: 1,
+    ttadak: 1,
+    sweep: 1,
+    bomb: 1,
+    ppeokEat: 2,
+  } satisfies Partial<Record<SpecialCaptureKind, number>> as Partial<Record<SpecialCaptureKind, number>>,
+
+  /** 엽전 paid on the spot, like the money 첫뻑 / 연뻑 / 삼뻑 / 첫따닥 collect in the real game. */
+  specialCoins: {
+    firstTtadak: 3,
+    firstPpeok: 3,
+    chainPpeok: 5,
+    triplePpeok: 10,
+  } satisfies Partial<Record<SpecialCaptureKind, number>> as Partial<Record<SpecialCaptureKind, number>>,
+
+  /** 흔들기 / 폭탄: every later score this stage ×shakeMult per stack (real game: final score ×2). */
+  shakeMult: 2,
+  /** Stacks beyond this no longer multiply (총통 = 흔들기 + 폭탄 = 2 stacks). */
+  shakeMaxStacks: 3,
 
   /** Card power granted by levels: Lv1 0, Lv2 10, Lv3 20, Lv4 30, Lv5 50, then +25 per level. */
   levelPower(level: number): number {

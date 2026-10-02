@@ -3,7 +3,7 @@ import type { StageModifierDefinition, Weather } from '../types';
 export const WEATHER_INFO: Record<Weather, { name: string; nameEn: string; glyph: string; description: string }> = {
   rain: { name: '비', nameEn: 'Rain', glyph: '☔', description: '12월(비) 카드 파워 +40, 획득 점수 ×2.' },
   wind: { name: '바람', nameEn: 'Wind', glyph: '🌬', description: '이웃 달 범위 +1, 이웃 달 카드 파워 +30.' },
-  frost: { name: '서리', nameEn: 'Frost', glyph: '❄', description: '각 턴 첫 리트리거의 기본 점수 ×0.5.' },
+  frost: { name: '서리', nameEn: 'Frost', glyph: '❄', description: '각 턴 첫 재발동의 기본 점수 ×0.5.' },
   clear: { name: '맑음', nameEn: 'Clear', glyph: '☀', description: '광이 포함된 족보 ×1.5, 광 파워 +30.' },
 };
 

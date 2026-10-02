@@ -7,11 +7,12 @@ import {
   Rng,
   WEATHER_INFO,
   capturedProfiles,
-  effectiveRules,
   evaluateAllJokbo,
   getEvolution,
   getTalismanDef,
+  jokboEvalRules,
   makeContext,
+  shakeFactor,
   type CardView,
   type JokboId,
   type RunState,
@@ -36,8 +37,7 @@ function Boxes({ filled, total, color }: { filled: number; total: number; color:
 export function JokboPanel({ run, flash }: { run: RunState; flash?: JokboId }): ReactElement {
   const stage = run.stage!;
   const ctx = makeContext(run, stage, new Rng(stage.rng));
-  const rules = effectiveRules(ctx);
-  const evals = evaluateAllJokbo(capturedProfiles(ctx), { rainBrightPenalty: rules.rainBrightPenalty });
+  const evals = evaluateAllJokbo(capturedProfiles(ctx), jokboEvalRules(ctx));
   return (
     <div className="panel p-2">
       <div className="mb-1 text-xs font-black tracking-widest text-amber-200">족보</div>
@@ -113,6 +113,7 @@ export function CapturedPanel({ run, view }: { run: RunState; view: (uid: string
     buckets.set(g.key, [...(buckets.get(g.key) ?? []), uid]);
   }
   const piValue = stage.captured.reduce((s, u) => s + view(u).piValue, 0);
+  const stolen = stage.bonusPi ?? 0;
   return (
     <div className="panel p-2">
       <div className="mb-1 flex justify-between text-xs font-black tracking-widest text-amber-200">
@@ -126,7 +127,7 @@ export function CapturedPanel({ run, view }: { run: RunState; view: (uid: string
             <div key={g.key}>
               <div className="text-[11px] text-stone-400">
                 {g.label} {list.length}
-                {g.key === 'pi' ? ` (피 ${piValue})` : ''}
+                {g.key === 'pi' ? ` (피 ${piValue + stolen}${stolen ? ` · 뺏은 피 ${stolen}` : ''})` : ''}
               </div>
               <div className="flex min-h-[20px] flex-wrap gap-0.5">
                 {list.map((u) => (
@@ -155,7 +156,7 @@ export function TalismanStrip({ run, compact }: { run: RunState; compact?: boole
               {def.glyph} {def.name}
               <span className="pointer-events-none absolute right-0 top-full z-50 mt-1 hidden w-60 rounded border border-amber-200/30 bg-stone-950 p-2 text-[11px] text-stone-200 shadow-xl group-hover:block">
                 <b>
-                  #{def.number} {def.name} ({def.nameEn})
+                  #{def.number} {def.name}
                 </b>
                 <br />
                 {def.description}
@@ -166,6 +167,40 @@ export function TalismanStrip({ run, compact }: { run: RunState; compact?: boole
         })}
       </div>
     </div>
+  );
+}
+
+const SC = BALANCE.specialCapture;
+const PI = BALANCE.specialPi;
+const COIN = BALANCE.specialCoins;
+const GOSTOP_RULES: [string, string][] = [
+  ['쪽', `짝 없이 낸 패를 더미에서 뒤집은 패가 바로 먹음 → +${SC.jjok} · 피 ${PI.jjok}장 뺏기`],
+  ['따닥', `바닥 같은 달 두 장을 낸 패와 뒤집은 패가 하나씩 먹음 → +${SC.ttadak} · 피 ${PI.ttadak}장 (첫 턴이면 첫따닥: 엽전 +${COIN.firstTtadak})`],
+  [
+    '뻑',
+    `낸 패로 짝을 맞췄는데 뒤집은 패도 같은 달 → 세 장이 바닥에 묶이고 아무것도 못 먹음. 첫뻑 엽전 +${COIN.firstPpeok} · 연뻑 +${COIN.chainPpeok} · 삼뻑은 +${SC.triplePpeok}, 엽전 +${COIN.triplePpeok}, 즉시 목표 달성`,
+  ],
+  ['자뻑 먹기', `묶인 뻑 세 장을 네 번째 패로 한꺼번에 먹음 → +${SC.ppeokEat} · 피 ${PI.ppeokEat}장`],
+  ['싹쓸이', `내 차례에 바닥을 비움 → +${SC.sweep} · 피 ${PI.sweep}장`],
+  ['흔들기', `손에 같은 달 세 장, 바닥엔 없음 → 그 달 패를 내면 자동 선언, 이후 점수 ×${BALANCE.shakeMult} (최대 ${BALANCE.shakeMaxStacks}번 겹침)`],
+  ['폭탄', `손에 같은 달 세 장 + 바닥에 한 장 → 한꺼번에 먹음 (+${SC.bomb}). 흔들기 한 번으로 치고 피 ${PI.bomb}장`],
+  ['총통', `첫 손패에 같은 달 네 장(또는 광 다섯 장) → +${SC.chongtong} · 흔들기 두 번 (흔들기 + 폭탄)`],
+];
+
+/** Collapsible cheat sheet of the Go-Stop special plays. */
+export function GoStopRulesPanel(): ReactElement {
+  return (
+    <details className="panel p-2 text-[11px] text-stone-300">
+      <summary className="cursor-pointer text-xs font-black tracking-widest text-amber-200">고스톱 특수 규칙</summary>
+      <div className="mt-1 space-y-1">
+        {GOSTOP_RULES.map(([k, v]) => (
+          <div key={k}>
+            <b className="text-amber-100">{k}</b> — {v}
+          </div>
+        ))}
+        <div className="text-stone-500">뺏은 피는 피 족보에 그대로 더해집니다.</div>
+      </div>
+    </details>
   );
 }
 
@@ -200,9 +235,27 @@ export function MultiplierPanel({ run }: { run: RunState }): ReactElement {
         </div>
       )}
       {stage.weather && <div className="text-stone-400">{WEATHER_INFO[stage.weather].description}</div>}
+      {(stage.shakeCount ?? 0) > 0 && (
+        <div className="flex justify-between">
+          <span className="text-stone-400">흔들기 {stage.shakeCount}회</span>
+          <b className="text-pink-300">×{shakeFactor(stage.shakeCount)}</b>
+        </div>
+      )}
+      {(stage.ppeokCount ?? 0) > 0 && (
+        <div className="flex justify-between">
+          <span className="text-stone-400">뻑</span>
+          <b className="text-red-300">{stage.ppeokCount}회{stage.ppeokCount >= 3 ? ' (삼뻑)' : ''}</b>
+        </div>
+      )}
+      {(stage.bonusPi ?? 0) > 0 && (
+        <div className="flex justify-between">
+          <span className="text-stone-400">뺏은 피</span>
+          <b className="text-lime-300">+{stage.bonusPi}</b>
+        </div>
+      )}
       {stage.retriggersThisStage > 0 && (
         <div className="flex justify-between">
-          <span className="text-stone-400">리트리거</span>
+          <span className="text-stone-400">재발동</span>
           <b>{stage.retriggersThisStage}</b>
         </div>
       )}

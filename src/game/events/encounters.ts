@@ -105,7 +105,7 @@ export const EVENTS: EventDefinition[] = [
           {
             id: 'discard',
             label: '둘 다 버리고 저주받은 패 한 장을 받는다',
-            description: '두 장 제거 + 무작위 카드(Lv.3, 저주 인챈트: 파워 +30, 족보 ×1.3, 손에 들어올 때 교환 -1) 추가.',
+            description: '두 장 제거 + 무작위 카드(Lv.3, 저주 강화: 파워 +30, 족보 ×1.3, 손에 들어올 때 교환 -1) 추가.',
             disabled: minOk(run, 1),
             steps: [{ op: 'removeCards', uids: shown }, { op: 'addCursedCard' }],
           },
@@ -262,7 +262,7 @@ export const EVENTS: EventDefinition[] = [
         {
           id: 'reinforce',
           label: '띠를 덧대어 튼튼하게',
-          description: `띠 한 장에 ${ENHANCEMENTS.reinforced.name} 인챈트 (파워 +10, 중첩).`,
+          description: `띠 한 장에 「${ENHANCEMENTS.reinforced.name}」 강화 부여 (파워 +10, 중첩).`,
           disabled: hasCards(run, { categories: ['ribbon'] }) ? undefined : '띠 없음',
           steps: [interactive('enhanceCard', '바느질: 덧대기', { filter: { categories: ['ribbon'] }, enhancement: 'reinforced' })],
         },
@@ -341,7 +341,7 @@ export const EVENTS: EventDefinition[] = [
         {
           id: 'pour',
           label: '9월 카드에 술을 붓는다',
-          description: '9월 카드 한 장 레벨 +2와 황금 인챈트.',
+          description: '9월 카드 한 장 레벨 +2와 황금 강화 부여.',
           disabled: hasCards(run, { months: [9], joker: false }) ? undefined : '9월 카드 없음',
           steps: [interactive('upgradeCard', '술상: 9월 카드', { filter: { months: [9], joker: false }, levels: 2, addEnhancement: 'golden' })],
         },
@@ -372,7 +372,7 @@ export const EVENTS: EventDefinition[] = [
           {
             id: 'echo',
             label: '새 한 마리에 메아리',
-            description: '고도리 새 카드 하나에 메아리 인챈트.',
+            description: '고도리 새 카드 하나에 메아리 강화 부여.',
             steps: [interactive('enhanceCard', '새떼: 메아리', { filter: { godori: true }, enhancement: 'echo' })],
           },
         ];

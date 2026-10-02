@@ -61,8 +61,8 @@ describe('retrigger', () => {
     expect(led.retriggers).toBe(1);
     expect(led.totalScore).toBe(led.lastScore * 2);
     const steps = after.stage!.chains.flatMap((c) => c.steps.map((s) => s.title));
-    expect(steps).toContain('ECHO!');
-    expect(steps).toContain('RETRIGGER CHEONGDAN');
+    expect(steps).toContain('메아리!');
+    expect(steps).toContain('청단 재발동');
   });
 
   it('Echo Drum adds one extra retrigger to the first retrigger of the stage', () => {
@@ -170,7 +170,7 @@ describe('determinism', () => {
 });
 
 describe('infinite loop protection', () => {
-  it('a self-retriggering effect terminates with OVERFLOW and keeps the score', () => {
+  it('a self-retriggering effect terminates with 과열 and keeps the score', () => {
     registerTalisman({
       id: 'test-ouroboros',
       number: 999,
@@ -189,7 +189,7 @@ describe('infinite loop protection', () => {
     const st = after.stage!;
     expect(st.overflowed).toBe(true);
     const chain = st.chains.find((c) => c.overflow)!;
-    expect(chain.steps.some((s) => s.title.includes('OVERFLOW'))).toBe(true);
+    expect(chain.steps.some((s) => s.title.includes('과열'))).toBe(true);
     expect(chain.resolutions).toBeLessThan(2000);
     expect(st.ledger.cheongdan.retriggers).toBeGreaterThan(3);
     expect(Number.isFinite(st.score)).toBe(true);

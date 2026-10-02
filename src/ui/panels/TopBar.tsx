@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { STAGES } from '../../game';
+import { MONTH_INFO, STAGES } from '../../game';
 import type { AnimSpeed, GameApi } from '../hooks/useGame';
 import { fmt } from '../views';
 
@@ -32,7 +32,7 @@ export function TopBar({ game, displayedScore, openDeck }: { game: GameApi; disp
           <div className="font-black">
             {def.name} {def.boss && <span className="rounded bg-red-600 px-1 text-[10px]">{def.finalBoss ? '최종 보스' : '보스'}</span>}
           </div>
-          <div className="text-[11px] text-stone-400">{between ? `다음 스테이지 · 목표 ${fmt(def.target)}` : def.nameEn}</div>
+          <div className="text-[11px] text-stone-400">{between ? `다음 스테이지 · 목표 ${fmt(def.target)}` : `${MONTH_INFO[def.month].plantKo}의 달`}</div>
         </div>
       </div>
       {stage && (
@@ -40,7 +40,7 @@ export function TopBar({ game, displayedScore, openDeck }: { game: GameApi; disp
           <div className="flex justify-between text-sm">
             <span className="font-black text-amber-300">{fmt(score)}</span>
             <span className="text-stone-300">
-              {stage.goLine ? <span className="text-red-300">GO 기준선 {fmt(stage.goLine)}</span> : <>목표 {fmt(stage.target)}</>}
+              {stage.goLine ? <span className="text-red-300">고 기준선 {fmt(stage.goLine)}</span> : <>목표 {fmt(stage.target)}</>}
             </span>
           </div>
           <div className="h-2.5 overflow-hidden rounded-full bg-stone-800">
@@ -52,7 +52,7 @@ export function TopBar({ game, displayedScore, openDeck }: { game: GameApi; disp
         <div className="flex gap-3 text-sm">
           <Stat label="턴" value={`${Math.min(stage.turn, stage.turnsTotal)}/${stage.turnsTotal}`} />
           <Stat label="교환" value={stage.exchangesLeft} />
-          <Stat label="GO" value={stage.goCount ? `${stage.goCount}고` : '-'} />
+          <Stat label="고" value={stage.goCount ? `${stage.goCount}고` : '-'} />
         </div>
       )}
       <Stat label="엽전" value={run.coins} gold />

@@ -34,7 +34,7 @@ export interface JokboDefinition {
   id: JokboId;
   name: string;
   nameEn: string;
-  /** Short shout for chain view, e.g. 'CHEONGDAN'. */
+  /** Short shout for chain view, e.g. '청단'. */
   shout: string;
   group: JokboGroup;
   description: string;

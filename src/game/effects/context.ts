@@ -152,6 +152,11 @@ export function capturedProfiles(ctx: GameContext): ScoringProfile[] {
   return (ctx.stage?.captured ?? []).map((uid) => profileOf(ctx, uid));
 }
 
+/** Rules the Jokbo evaluator needs for the current stage (비광 penalty, 피 뺏기 bonus 피). */
+export function jokboEvalRules(ctx: GameContext): { rainBrightPenalty: boolean; bonusPi: number } {
+  return { rainBrightPenalty: effectiveRules(ctx).rainBrightPenalty, bonusPi: ctx.stage?.bonusPi ?? 0 };
+}
+
 export function jokboLevel(ctx: GameContext, id: JokboId): number {
   return ctx.run.jokbo[id]?.level ?? 1;
 }

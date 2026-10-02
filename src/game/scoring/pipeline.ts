@@ -23,6 +23,11 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+/** 흔들기 / 폭탄 / 총통 stacks → score factor (capped at `shakeMaxStacks`). */
+export function shakeFactor(stacks: number): number {
+  return Math.pow(BALANCE.shakeMult, Math.max(0, Math.min(stacks, BALANCE.shakeMaxStacks)));
+}
+
 export function globalMultiplier(ctx: GameContext, mods: ScoreMods, entries: ScoreEntry[]): number {
   const stage = ctx.stage;
   let add = 0;
@@ -41,6 +46,11 @@ export function globalMultiplier(ctx: GameContext, mods: ScoreMods, entries: Sco
     entries.push({ source: e.label, kind: 'globalMultAdd', value: round2(e.value) });
   }
   let mult = 1 + add;
+  const shake = shakeFactor(stage?.shakeCount ?? 0);
+  if (shake !== 1) {
+    mult *= shake;
+    entries.push({ source: `흔들기 ${Math.min(stage!.shakeCount, BALANCE.shakeMaxStacks)}회`, kind: 'globalMult', value: round2(shake) });
+  }
   if (stage && stage.globalMultFactor !== 1) {
     mult *= stage.globalMultFactor;
     entries.push({ source: '스테이지 배율', kind: 'globalMult', value: round2(stage.globalMultFactor) });
@@ -73,7 +83,7 @@ export function computeJokboScore(ctx: GameContext, scope: ScoreScope): ScoreBre
     const f = Math.max(0.4, 1 - decay * n);
     if (f !== 1) {
       baseMult *= f;
-      entries.push({ source: '나비 폭풍 (리트리거 감쇠)', kind: 'baseMult', value: round2(f) });
+      entries.push({ source: '나비 폭풍 (재발동 감쇠)', kind: 'baseMult', value: round2(f) });
     }
   }
 

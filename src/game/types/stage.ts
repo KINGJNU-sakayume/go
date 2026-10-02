@@ -99,6 +99,13 @@ export interface StageTurnState {
   fieldHadCards: boolean;
 }
 
+/** 뻑: three cards of one month left stacked on the field until the fourth one takes them all. */
+export interface PpeokPile {
+  month: Month;
+  uids: string[];
+  turn: number;
+}
+
 export interface CaptureActionRecord {
   id: number;
   months: Month[];
@@ -155,4 +162,13 @@ export interface StageState {
   overflowed: boolean;
   /** Display order for hand (September Drunk shuffles this). */
   handOrderSeed: number;
+  /** 뻑 piles currently on the field. */
+  ppeokPiles: PpeokPile[];
+  /** 뻑 count this stage (삼뻑 on the third). */
+  ppeokCount: number;
+  lastPpeokTurn?: number;
+  /** 피 taken by 피 뺏기 (쪽, 따닥, 싹쓸이, 폭탄, 자뻑); counts toward the 피 Jokbo. */
+  bonusPi: number;
+  /** 흔들기 stacks this stage (폭탄 and 총통 count too); each multiplies all later scores. */
+  shakeCount: number;
 }

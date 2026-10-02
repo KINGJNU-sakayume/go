@@ -16,16 +16,21 @@ import {
   playBomb,
   playCard,
   cancelHandChoice,
+  shakeFactor,
+  shakeableMonths,
+  identityOf,
   visiblePreviewCount,
+  BALANCE,
   type CaptureOption,
   type JokboId,
+  type PpeokPile,
 } from '../../game';
 import type { GameApi } from '../hooks/useGame';
 import { useChainAnimation } from '../hooks/useChainAnimation';
 import { Card, CardBack } from '../components/Card';
 import { useCardHover } from '../components/Hover';
 import { Modal } from '../components/Modal';
-import { CapturedPanel, JokboPanel, MultiplierPanel, TalismanStrip } from '../panels/StagePanels';
+import { CapturedPanel, GoStopRulesPanel, JokboPanel, MultiplierPanel, TalismanStrip } from '../panels/StagePanels';
 import { ChainHistory, ChainSpotlight } from '../panels/ChainFeed';
 import { TopBar } from '../panels/TopBar';
 import { fmt, makeViewFn } from '../views';
@@ -53,6 +58,12 @@ export function StageScreen({ game, openDeck }: { game: GameApi; openDeck: () =>
     (stage.phase === 'chooseHandTarget' || stage.phase === 'chooseStockTarget') && pending ? pending.options.flatMap((o) => o.targetUids) : [],
   );
   const bombs = inPlay ? bombOptions(run) : [];
+  const shakes = inPlay ? shakeableMonths(run) : [];
+  const selectedShake =
+    selected && inPlay && shakes.length ? identityOf(ctx, selected).scoringMonths.find((m) => shakes.includes(m)) : undefined;
+  const nextShake = shakeFactor((stage.shakeCount ?? 0) + 1);
+  const pileOf = new Map<string, PpeokPile>();
+  for (const p of stage.ppeokPiles ?? []) for (const u of p.uids) pileOf.set(u, p);
   const previewN = visiblePreviewCount(run);
   const lastJokbo = anim.current?.step.jokboId as JokboId | undefined;
 
@@ -109,6 +120,7 @@ export function StageScreen({ game, openDeck }: { game: GameApi; openDeck: () =>
               <div key={i}>• {t}</div>
             ))}
           </div>
+          <GoStopRulesPanel />
         </div>
 
         <div className="order-1 flex min-w-0 flex-col gap-2 lg:order-2">
@@ -127,21 +139,48 @@ export function StageScreen({ game, openDeck }: { game: GameApi; openDeck: () =>
                 )}
               </div>
               <div className="flex flex-1 flex-wrap content-center items-center justify-center gap-2">
-                {stage.field.map((u) => {
-                  const covered = stage.covered.includes(u);
-                  const hl = pendingTargets.has(u) || (!covered && matchable.has(u));
-                  return (
-                    <Card
-                      key={u}
-                      view={view(u)}
-                      covered={covered}
-                      highlight={hl}
-                      dim={!!selected && inPlay && !hl && !covered}
-                      onClick={() => onFieldClick(u)}
-                      onHover={covered ? undefined : hover}
-                    />
-                  );
-                })}
+                {(() => {
+                  const fieldCard = (u: string) => {
+                    const covered = stage.covered.includes(u);
+                    const hl = pendingTargets.has(u) || (!covered && matchable.has(u));
+                    return (
+                      <Card
+                        key={u}
+                        view={view(u)}
+                        covered={covered}
+                        highlight={hl}
+                        dim={!!selected && inPlay && !hl && !covered}
+                        onClick={() => onFieldClick(u)}
+                        onHover={covered ? undefined : hover}
+                      />
+                    );
+                  };
+                  const shown = new Set<PpeokPile>();
+                  return stage.field.map((u) => {
+                    const pile = pileOf.get(u);
+                    if (!pile) return fieldCard(u);
+                    if (shown.has(pile)) return null;
+                    shown.add(pile);
+                    return (
+                      <div
+                        key={`pile-${pile.uids.join('-')}`}
+                        className="relative flex items-center rounded-lg bg-red-950/50 px-1.5 pb-1.5 pt-4 ring-1 ring-red-400/60"
+                        title={`뻑: ${pile.month}월 세 장이 묶여 있습니다. 네 번째 ${pile.month}월 패로 한꺼번에 먹으면 자뻑 먹기 (보너스 + 피 뺏기).`}
+                      >
+                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-red-700 px-1.5 text-[10px] font-black">
+                          뻑 · {pile.month}월
+                        </span>
+                        {pile.uids
+                          .filter((pu) => stage.field.includes(pu))
+                          .map((pu, i) => (
+                            <div key={pu} style={{ marginLeft: i ? -36 : 0 }}>
+                              {fieldCard(pu)}
+                            </div>
+                          ))}
+                      </div>
+                    );
+                  });
+                })()}
                 {stage.field.length === 0 && <div className="text-sm text-emerald-200/60">필드가 비었습니다</div>}
               </div>
               {stage.phase === 'chooseStockTarget' && pending && (
@@ -170,9 +209,23 @@ export function StageScreen({ game, openDeck }: { game: GameApi; openDeck: () =>
                 <span className="ml-2 font-normal text-stone-400">
                   {inPlay ? (selected ? '한 번 더 누르면 냄 · 빛나는 필드 카드를 누르면 그 카드를 가져감' : '낼 카드를 고르세요') : ''}
                 </span>
+                {selectedShake !== undefined && (
+                  <span className="ml-2 font-bold text-pink-300">
+                    이 패를 내면 흔들기! ({selectedShake}월 · 이후 점수 ×{nextShake})
+                  </span>
+                )}
                 {stage.drunk > 0 && <span className="ml-2 text-orange-300">취기 {stage.drunk}/3</span>}
               </div>
               <div className="flex flex-wrap gap-1">
+                {shakes.map((m) => (
+                  <span
+                    key={`shake-${m}`}
+                    className="rounded border border-pink-400/50 bg-pink-950/50 px-1.5 py-1 text-xs font-bold text-pink-200"
+                    title={`${m}월 패가 손에 세 장 이상, 바닥에는 없습니다. ${m}월 패를 내면 자동으로 흔들어 이번 판 이후 점수가 ×${BALANCE.shakeMult} (최대 ${BALANCE.shakeMaxStacks}번).`}
+                  >
+                    흔들기 대기 · {m}월
+                  </span>
+                ))}
                 {bombs.map((b) => (
                   <button key={b.month} type="button" className="btn btn-red text-xs" disabled={locked} onClick={() => game.act((r) => playBomb(r, b.month))}>
                     폭탄! {b.month}월 ({b.handUids.length}+{b.fieldUids.length}장)
@@ -235,15 +288,15 @@ export function StageScreen({ game, openDeck }: { game: GameApi; openDeck: () =>
               {stage.goCount > 0 ? '또 넘었다!' : '목표 달성!'}
             </div>
             <div className="mt-1 text-sm text-stone-300">
-              점수 {fmt(stage.score)} / {stage.goLine ? `GO 기준선 ${fmt(stage.goLine)}` : `목표 ${fmt(stage.target)}`} · 남은 턴 {stage.turnsTotal - stage.turn}
+              점수 {fmt(stage.score)} / {stage.goLine ? `고 기준선 ${fmt(stage.goLine)}` : `목표 ${fmt(stage.target)}`} · 남은 턴 {stage.turnsTotal - stage.turn}
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <button type="button" className="btn btn-gold py-4 text-left" onClick={() => game.act(chooseStop)}>
-                <div className="text-2xl font-black">STOP · 스톱</div>
+                <div className="text-2xl font-black">스톱</div>
                 <div className="text-xs font-normal">지금 스테이지 클리어. 안전하게 보상을 받습니다.</div>
               </button>
               <button type="button" className="btn btn-red py-4 text-left" onClick={() => game.act(chooseGo)}>
-                <div className="text-2xl font-black">GO · 고 ({stage.goCount + 1})</div>
+                <div className="text-2xl font-black">{stage.goCount + 1}고!</div>
                 <div className="text-xs font-normal">
                   남은 턴 계속. 엽전 +{Math.round((def.goHazard.coinBonusPerGo + (def.mechanics.goRewardBonus ?? 0)) * 100)}%/고, 보상 등급 상승. 새 기준선 {fmt(Math.round(stage.score * def.goHazard.lineMult))}.
                 </div>
@@ -280,7 +333,7 @@ function StageResultView({ game }: { game: GameApi }): ReactElement {
         <div className="mx-auto mt-3 max-w-xs space-y-0.5 text-sm">
           <Row k="기본 엽전" v={r.coins.base} />
           <Row k="초과 점수" v={r.coins.overkill} />
-          {r.goCount > 0 && <Row k={`GO ×${r.goCount}`} v={r.coins.go} />}
+          {r.goCount > 0 && <Row k={`${r.goCount}고`} v={r.coins.go} />}
           {r.coins.talismans !== 0 && <Row k="스테이지 중 획득" v={r.coins.talismans} note="(이미 지급)" />}
           {r.bust && <Row k="독박 손실" v={-r.coins.bustPenalty} />}
           <div className="flex justify-between border-t border-white/10 pt-1 font-black text-amber-300">

@@ -50,7 +50,7 @@ export function ChainSpotlight({ current, shown, busy, onSkip }: { current?: Ani
       <div className="pointer-events-auto rounded-xl border border-amber-200/20 bg-black/75 px-4 py-2 text-center shadow-2xl backdrop-blur-sm" onClick={onSkip}>
         <div className="text-[10px] tracking-widest text-stone-400">
           {current.chainTitle}
-          {(s.chainCount ?? 0) >= 2 && <span className="ml-2 font-black text-fuchsia-300">CHAIN ×{s.chainCount}</span>}
+          {(s.chainCount ?? 0) >= 2 && <span className="ml-2 font-black text-fuchsia-300">연쇄 ×{s.chainCount}</span>}
         </div>
         <div key={`${current.chainId}-${s.id}`} className="pop-in">
           <div className={`${big ? 'text-2xl md:text-3xl' : 'text-lg'} font-black`} style={{ color: TONE[s.tone ?? 'gray'], fontFamily: 'var(--font-serif)' }}>

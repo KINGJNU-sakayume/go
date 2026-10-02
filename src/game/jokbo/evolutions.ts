@@ -108,7 +108,7 @@ function waveSpec(id: JokboId, filter: CardFilter, fraction: number): EffectSpec
       {
         kind: 'addScore',
         value: { scalar: 'jokboLastScore', arg: id, times: fraction },
-        label: 'WAVE',
+        label: '물결',
         applyGlobal: false,
       },
     ],
@@ -150,7 +150,7 @@ function buildEvolutions(): EvolutionDefinition[] {
       jokboId: jid,
       name: theme.endless[0],
       nameEn: theme.endless[1],
-      description: `매 스테이지 첫 ${nk} 발동이 한 번 더 발동(리트리거).`,
+      description: `매 스테이지 첫 ${nk} 발동이 한 번 더 발동(재발동).`,
       minLevel: 3,
       specs: [endlessSpec(jid)],
     });
@@ -171,7 +171,7 @@ function buildEvolutions(): EvolutionDefinition[] {
         jokboId: jid,
         name: theme.echo[0],
         nameEn: theme.echo[1],
-        description: `${nk}를 이루는 카드가 모두 강화(인챈트)되어 있으면 ${nk}가 발동할 때마다 리트리거.`,
+        description: `${nk}를 이루는 카드가 모두 강화되어 있으면 ${nk}가 발동할 때마다 재발동.`,
         minLevel: 3,
         specs: [echoSpec(jid)],
       });
@@ -192,7 +192,7 @@ function buildEvolutions(): EvolutionDefinition[] {
     jokboId: 'gwang',
     name: '끝없는 빛',
     nameEn: 'Endless Light',
-    description: '매 스테이지 첫 광 발동이 한 번 더 발동(리트리거).',
+    description: '매 스테이지 첫 광 발동이 한 번 더 발동(재발동).',
     minLevel: 3,
     specs: [endlessSpec('gwang')],
   });
