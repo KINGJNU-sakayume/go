@@ -518,8 +518,8 @@ function applyCore(ctx: GameContext, ev: GameEvent): CoreResult {
       if (pi > 0 && rules.piSteal) after.push({ type: 'PI_STOLEN', amount: pi, special: ev.special });
       const coins = BALANCE.specialCoins[ev.special] ?? 0;
       if (coins > 0) after.push({ type: 'COINS_GAINED', amount: coins });
-      // 삼뻑 wins the hand outright: after its bonus the score is lifted to the line it has to reach.
-      if (ev.special === 'triplePpeok') after.push({ type: 'CUSTOM', customId: 'ppeokWin' });
+      // 삼뻑 used to win the hand outright; now it pays a share of the target (smaller on boss stages).
+      if (ev.special === 'triplePpeok') after.push({ type: 'CUSTOM', customId: 'ppeokBonus' });
       return { before, after };
     }
     case 'PPEOK': {
@@ -529,17 +529,11 @@ function applyCore(ctx: GameContext, ev: GameEvent): CoreResult {
       const special = PPEOK_SPECIAL[ev.kind];
       return { before: [], after: special ? [{ type: 'SPECIAL_CAPTURE', special, month: ev.month }] : [] };
     }
-    case 'SHAKE_DECLARED': {
-      // Real Go-Stop doubles the whole hand's score. Later scores carry the multiplier through the
-      // pipeline; the score already on the board is doubled right here, so the stage total ends ×2.
+    case 'SHAKE_DECLARED':
+      // Every score after the declaration carries the multiplier through the pipeline. The score already
+      // on the board is left alone: shaking early is worth more, waiting for a 폭탄 captures more.
       stage.shakeCount++;
-      if (stage.shakeCount > BALANCE.shakeMaxStacks || stage.score <= 0) return none;
-      const amount = Math.round(stage.score * (BALANCE.shakeMult - 1));
-      return {
-        before: [{ type: 'SCORE_ADDED', amount, label: `흔들기: 지금까지 점수 ×${BALANCE.shakeMult}`, scoreKind: 'special' }],
-        after: [],
-      };
-    }
+      return none;
     case 'PI_STOLEN':
       stage.bonusPi += ev.amount;
       return { before: [], after: [{ type: 'JOKBO_CHECK' }] };
@@ -806,7 +800,7 @@ function describeEvent(ctx: GameContext, ev: GameEvent): void {
       step(ctx, ev, 'mult', ev.cause === 'shake' && ev.month ? `${SHAKE_TITLE.shake} ${ev.month}월` : SHAKE_TITLE[ev.cause], {
         detail: capped
           ? `흔들기는 ${BALANCE.shakeMaxStacks}번까지만 배율이 붙음 — 지금 ×${fmtNum(shakeFactor(stacks))}`
-          : `판 점수 ×${fmtNum(shakeFactor(stacks))} — 지금까지 점수도, 앞으로 얻을 점수도 (${stacks}회)`,
+          : `이제부터 얻는 점수 ×${fmtNum(shakeFactor(stacks))} (${stacks}회)`,
         tone: 'pink',
       });
       break;

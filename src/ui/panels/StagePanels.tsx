@@ -178,16 +178,16 @@ const GOSTOP_RULES: [string, string][] = [
   ['따닥', `바닥 같은 달 두 장을 낸 패와 뒤집은 패가 하나씩 먹음 → +${SC.ttadak} · 피 ${PI.ttadak}장 (첫 턴이면 첫따닥: 엽전 +${COIN.firstTtadak})`],
   [
     '뻑',
-    `낸 패로 짝을 맞췄는데 뒤집은 패도 같은 달 → 세 장이 바닥에 묶이고 아무것도 못 먹음. 첫뻑 엽전 +${COIN.firstPpeok} · 연뻑 +${COIN.chainPpeok} · 삼뻑은 +${SC.triplePpeok}, 엽전 +${COIN.triplePpeok}, 즉시 목표 달성`,
+    `낸 패로 짝을 맞췄는데 뒤집은 패도 같은 달 → 세 장이 바닥에 묶이고 아무것도 못 먹음. 첫뻑 엽전 +${COIN.firstPpeok} · 연뻑 +${COIN.chainPpeok} · 삼뻑은 +${SC.triplePpeok}, 엽전 +${COIN.triplePpeok}, 목표의 ${Math.round(BALANCE.triplePpeokTargetFraction * 100)}% 보너스 (보스 ${Math.round(BALANCE.triplePpeokBossTargetFraction * 100)}%)`,
   ],
   ['자뻑 먹기', `묶인 뻑 세 장을 네 번째 패로 한꺼번에 먹음 → +${SC.ppeokEat} · 피 ${PI.ppeokEat}장`],
   ['싹쓸이', `내 차례에 바닥을 비움 → +${SC.sweep} · 피 ${PI.sweep}장`],
   [
     '흔들기',
-    `손에 같은 달 세 장, 바닥엔 없음 → [흔들기] 버튼을 누르거나 그 달 패를 내면 선언. 판 점수 ×${BALANCE.shakeMult} (지금까지 점수 포함, 최대 ${BALANCE.shakeMaxStacks}번 겹침)`,
+    `손에 같은 달 세 장, 바닥엔 없음 → [흔들고 내기]로 그 달 패를 내며 선언 (그냥 내면 흔들지 않음). 선언한 뒤 얻는 점수만 ×${BALANCE.shakeMult} — 일찍 흔들수록 이득, 최대 ${BALANCE.shakeMaxStacks}번 겹침`,
   ],
   ['폭탄', `손에 같은 달 세 장 + 바닥에 한 장 → 한꺼번에 먹음 (+${SC.bomb}). 흔들기 한 번으로 치고 피 ${PI.bomb}장`],
-  ['총통', `첫 손패에 같은 달 네 장(또는 광 다섯 장) → +${SC.chongtong} · 흔들기 두 번 (흔들기 + 폭탄)`],
+  ['총통', `첫 손패에 같은 달 네 장(또는 광 다섯 장) → +${SC.chongtong} · 첫 턴부터 흔들기 한 번`],
 ];
 
 /** Collapsible cheat sheet of the Go-Stop special plays. */

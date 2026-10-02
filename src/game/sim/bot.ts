@@ -2,7 +2,7 @@ import type { CaptureOption, RunState } from '../types';
 import { ALL_JOKBO } from '../types';
 import { capturedProfiles, effectiveRules, identityOf, profileOf } from '../effects/context';
 import { evaluateAllJokbo } from '../jokbo/evaluate';
-import { canExchange, chooseExchange, chooseGo, chooseStop, chooseTarget, exchangeCard, handCaptureOptions, playCard, stageContext } from '../engine/stage';
+import { canExchange, chooseExchange, chooseGo, chooseStop, chooseTarget, exchangeCard, handCaptureOptions, playCard, shakeMonthOf, stageContext } from '../engine/stage';
 
 /** Very simple greedy player used for smoke tests and balance simulation. */
 function jokboValue(evals: ReturnType<typeof evaluateAllJokbo>): number {
@@ -62,11 +62,16 @@ export function botStep(run: RunState, opts: { go?: boolean } = {}): RunState {
           }
         }
       }
+      // 흔들기 is declared, never automatic: shake early (the ×2 only covers later scores) or when
+      // there is nothing worth capturing anyway.
+      const shakeUid = stage.hand.find((u) => shakeMonthOf(run, u) !== undefined);
+      if (shakeUid && (bestScore <= 0 || stage.turn <= 2)) return playCard(run, shakeUid, undefined, { shake: true });
       if (bestScore <= 0 && stage.exchangesLeft > 0) {
         const ex = stage.hand.find((u) => canExchange(run, u).ok);
         if (ex) return exchangeCard(run, ex);
       }
-      return playCard(run, bestUid, bestOpt && bestOpt.kind !== 'place' ? bestOpt.id : bestOpt?.id);
+      const shake = shakeMonthOf(run, bestUid) !== undefined;
+      return playCard(run, bestUid, bestOpt && bestOpt.kind !== 'place' ? bestOpt.id : bestOpt?.id, { shake });
     }
     default:
       return run;

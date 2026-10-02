@@ -88,6 +88,8 @@ export interface PendingChoice {
   /** Exchange (Lucky): the drawn candidates to keep one of. */
   candidates?: string[];
   free?: boolean;
+  /** Hand choice: the play was declared as 흔들기. */
+  shake?: boolean;
 }
 
 export interface StageTurnState {

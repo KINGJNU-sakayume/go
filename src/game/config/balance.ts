@@ -46,10 +46,18 @@ export const BALANCE = {
     triplePpeok: 10,
   } satisfies Partial<Record<SpecialCaptureKind, number>> as Partial<Record<SpecialCaptureKind, number>>,
 
-  /** 흔들기 / 폭탄: every later score this stage ×shakeMult per stack (real game: final score ×2). */
+  /**
+   * 흔들기 / 폭탄: every score after the declaration ×shakeMult per stack. Nothing already on the board
+   * is doubled, so when to shake is a real decision (real game: final score ×2).
+   */
   shakeMult: 2,
-  /** Stacks beyond this no longer multiply (총통 = 흔들기 + 폭탄 = 2 stacks). */
-  shakeMaxStacks: 3,
+  /** Stacks beyond this no longer multiply (×4 at most). */
+  shakeMaxStacks: 2,
+  /** 삼뻑 no longer wins outright: it pays this fraction of the stage target (boss stages: the smaller one). */
+  triplePpeokTargetFraction: 0.4,
+  triplePpeokBossTargetFraction: 0.2,
+  /** 고: every GO adds this to the stage multiplier (배) for all later scores, like the real game's 고 점수. */
+  goMultAdd: 0.5,
 
   /** Card power granted by levels: Lv1 0, Lv2 10, Lv3 20, Lv4 30, Lv5 50, then +25 per level. */
   levelPower(level: number): number {

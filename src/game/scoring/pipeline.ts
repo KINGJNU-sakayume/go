@@ -45,6 +45,11 @@ export function globalMultiplier(ctx: GameContext, mods: ScoreMods, entries: Sco
     add += e.value;
     entries.push({ source: e.label, kind: 'globalMultAdd', value: round2(e.value) });
   }
+  const go = stage?.goCount ?? 0;
+  if (go > 0 && BALANCE.goMultAdd) {
+    add += go * BALANCE.goMultAdd;
+    entries.push({ source: `${go}고`, kind: 'globalMultAdd', value: round2(go * BALANCE.goMultAdd) });
+  }
   let mult = 1 + add;
   const shake = shakeFactor(stage?.shakeCount ?? 0);
   if (shake !== 1) {

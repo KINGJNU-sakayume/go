@@ -1,6 +1,7 @@
 import type { GameEvent, GameEventPayload, Weather } from '../types';
 import { ensureTemp, invalidate, type GameContext } from '../effects/context';
 import { JOKBO_DEFS } from '../jokbo/definitions';
+import { BALANCE } from '../config/balance';
 
 type CustomEvent = Extract<GameEvent, { type: 'CUSTOM' }>;
 
@@ -29,11 +30,15 @@ export const CUSTOM_CORE: Record<string, (ctx: GameContext, ev: CustomEvent) => 
     ctx.stage.field = ctx.rng.shuffle(ctx.stage.field);
     return [];
   },
-  ppeokWin(ctx) {
+  ppeokBonus(ctx) {
     const stage = ctx.stage;
     if (!stage) return [];
-    const missing = Math.max(stage.target, stage.goLine ?? 0) - stage.score;
-    return missing > 0 ? [{ type: 'SCORE_ADDED', amount: missing, label: '삼뻑 승리 — 목표 달성', scoreKind: 'special' }] : [];
+    const boss = !!ctx.stageDef?.boss;
+    const fraction = boss ? BALANCE.triplePpeokBossTargetFraction : BALANCE.triplePpeokTargetFraction;
+    const amount = Math.round(stage.target * fraction);
+    return amount > 0
+      ? [{ type: 'SCORE_ADDED', amount, label: `삼뻑 보너스 (목표의 ${Math.round(fraction * 100)}%)`, scoreKind: 'special' }]
+      : [];
   },
   setWeather(ctx, ev) {
     if (!ctx.stage || !ev.text) return [];
