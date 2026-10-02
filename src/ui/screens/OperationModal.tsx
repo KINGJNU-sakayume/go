@@ -25,7 +25,7 @@ import { CardFilterBar, applyCardFilter, type FilterKey } from './DeckViewer';
 
 function PowerLine({ v }: { v: CardView }): ReactElement {
   return (
-    <div className="text-[11px] text-stone-300">
+    <div className="text-xs text-stone-300">
       Lv.{v.level} · 파워 {v.power} · {v.scoringMonths.join('/')}월
     </div>
   );

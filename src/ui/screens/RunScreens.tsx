@@ -22,20 +22,39 @@ import { useCardHover } from '../components/Hover';
 import { RARITY_KO, RARITY_STYLE } from '../components/Modal';
 import { TalismanStrip } from '../panels/StagePanels';
 import { TopBar, copyText } from '../panels/TopBar';
+import { Seal } from '../components/Seal';
+
+const SERVICE_SEAL: Record<string, string> = {
+  removal: '削',
+  upgrade: '昇',
+  mutation: '變',
+  duplicate: '複',
+  perfectClone: '寫',
+  jokboTraining: '譜',
+  jokerWorkshop: '工',
+  monthDye: '染',
+  monthDyeExact: '筆',
+  ribbonDye: '染',
+  ribbonDyeExact: '彩',
+  purify: '淨',
+  enhancement: '強',
+  addJoker: '鬼',
+};
 import { fmt, makeDeckViewFn } from '../views';
 
-const KIND_ICON: Record<string, string> = {
-  talisman: '符',
-  upgradeCard: '⬆',
-  removeCard: '✂',
-  duplicateCard: '⧉',
-  perfectClone: '⧉',
-  enhanceCard: '✦',
-  mutateCard: '☯',
-  upgradeJokbo: '譜',
-  addJoker: '鬼',
-  jokerWorkshop: '鬼',
-  coins: '錢',
+/** Reward kinds as carved seals (no emoji / generic glyph icons). */
+const KIND_SEAL: Record<string, { char: string; tone: 'red' | 'ink' | 'gold' | 'indigo' }> = {
+  talisman: { char: '符', tone: 'red' },
+  upgradeCard: { char: '昇', tone: 'gold' },
+  removeCard: { char: '削', tone: 'ink' },
+  duplicateCard: { char: '複', tone: 'indigo' },
+  perfectClone: { char: '寫', tone: 'indigo' },
+  enhanceCard: { char: '強', tone: 'gold' },
+  mutateCard: { char: '變', tone: 'red' },
+  upgradeJokbo: { char: '譜', tone: 'red' },
+  addJoker: { char: '鬼', tone: 'ink' },
+  jokerWorkshop: { char: '工', tone: 'ink' },
+  coins: { char: '錢', tone: 'gold' },
 };
 
 function Shell({ game, openDeck, children }: { game: GameApi; openDeck: () => void; children: React.ReactNode }): ReactElement {
@@ -69,7 +88,7 @@ export function RewardScreen({ game, openDeck }: { game: GameApi; openDeck: () =
             onClick={() => game.act((r) => pickReward(r, o.id))}
           >
             <div className="flex items-center justify-between">
-              <span className="text-3xl">{KIND_ICON[o.kind] ?? '?'}</span>
+              <Seal char={KIND_SEAL[o.kind]?.char ?? '賞'} tone={KIND_SEAL[o.kind]?.tone ?? 'red'} size={40} />
               <span className="text-xs">{RARITY_KO[o.rarity]}</span>
             </div>
             <div className="text-lg font-black text-stone-100">{o.title}</div>
@@ -103,7 +122,7 @@ export function CrossroadsScreen({ game, openDeck }: { game: GameApi; openDeck: 
       <div className="grid gap-3 md:grid-cols-2">
         {run.crossroads!.options.map((o) => (
           <button key={o.id} type="button" className="panel p-6 text-left transition hover:-translate-y-1 hover:bg-white/5" onClick={() => game.act((r) => chooseCrossroads(r, o.id))}>
-            <div className="text-4xl">{o.kind === 'shop' ? '🏮' : '⛩'}</div>
+            <Seal char={o.kind === 'shop' ? '市' : '緣'} tone={o.kind === 'shop' ? 'gold' : 'red'} size={48} />
             <div className="mt-2 text-2xl font-black">{o.title}</div>
             <div className="text-sm text-stone-300">{o.description}</div>
           </button>
@@ -141,7 +160,10 @@ export function ShopScreen({ game, openDeck }: { game: GameApi; openDeck: () => 
           return (
             <div key={o.id} className={`panel flex flex-col gap-1 border-2 p-3 ${RARITY_STYLE[o.rarity]} ${o.sold ? 'opacity-40' : ''}`}>
               <div className="flex justify-between text-xs">
-                <span>{t ? `${t.glyph} 부적 #${t.number}` : '서비스'}</span>
+                <span className="flex items-center gap-1.5">
+                  <Seal char={t ? t.glyph : SERVICE_SEAL[o.service] ?? '市'} size={22} tone={t ? 'red' : 'ink'} />
+                  {t ? `부적 #${t.number}` : '장터 서비스'}
+                </span>
                 <span>{RARITY_KO[o.rarity]}</span>
               </div>
               <div className="font-black text-stone-100">{o.title}</div>

@@ -6,6 +6,7 @@ import { OperationModal } from './screens/OperationModal';
 import { DeckViewer } from './screens/DeckViewer';
 import { CrossroadsScreen, EventScreen, GameOverScreen, RewardScreen, ShopScreen, TitleScreen } from './screens/RunScreens';
 import { DebugPanel } from './screens/DebugPanel';
+import { CardThemeContext } from './theme/linocut';
 
 const DEBUG = import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug'));
 
@@ -26,18 +27,20 @@ export function App(): ReactElement {
 
   const showOps = !!run && run.ops.length > 0 && run.phase !== 'stage' && run.phase !== 'stageResult';
   return (
+    <CardThemeContext.Provider value={game.settings.cardTheme}>
     <HoverProvider>
       {screen}
       {showOps && <OperationModal game={game} />}
       {deckOpen && run && <DeckViewer run={run} onClose={() => setDeckOpen(false)} />}
       <div className="pointer-events-none fixed bottom-3 right-3 z-[95] flex flex-col items-end gap-1">
         {game.toasts.map((t) => (
-          <div key={t.id} className="float-up rounded bg-stone-900/95 px-3 py-1.5 text-sm shadow-lg ring-1 ring-amber-200/30">
+          <div key={t.id} className="float-up rounded bg-[#1e1512]/95 px-3 py-1.5 text-sm shadow-lg ring-1 ring-amber-200/30">
             {t.text}
           </div>
         ))}
       </div>
       {DEBUG && <DebugPanel game={game} />}
     </HoverProvider>
+    </CardThemeContext.Provider>
   );
 }

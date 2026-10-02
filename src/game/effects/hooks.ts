@@ -1,4 +1,4 @@
-import type { CardView, PowerPart, RulesConfig, ScoreHook } from '../types';
+import type { CardView, PowerPart, RulesConfig, ScoreHook, SourceRef } from '../types';
 import { BALANCE } from '../config/balance';
 import type { CardIdentity } from '../cards/identity';
 import { hasEnhancement } from '../cards/identity';
@@ -114,6 +114,8 @@ export function computePower(ctx: GameContext, identity: CardIdentity): Pick<Car
 export interface ModEntry {
   label: string;
   value: number;
+  /** The source behind the modifier (talisman, enhancement…) so the UI can point at it. */
+  ref?: SourceRef;
 }
 
 export interface ScoreMods {
@@ -142,25 +144,25 @@ export function collectScoreMods(ctx: GameContext, score: ScoreScope, hooks: Sco
           const label = spec.shout ?? source.ref.label;
           switch (action.kind) {
             case 'baseMult':
-              mods.baseMults.push({ label, value: evalValue(action.value, scope) });
+              mods.baseMults.push({ label, value: evalValue(action.value, scope), ref: source.ref });
               break;
             case 'flat':
-              mods.flats.push({ label, value: evalValue(action.value, scope) });
+              mods.flats.push({ label, value: evalValue(action.value, scope), ref: source.ref });
               break;
             case 'jokboMult':
-              mods.jokboMults.push({ label, value: evalValue(action.value, scope) });
+              mods.jokboMults.push({ label, value: evalValue(action.value, scope), ref: source.ref });
               break;
             case 'jokboMultAdd':
-              mods.jokboAdds.push({ label, value: evalValue(action.value, scope) });
+              mods.jokboAdds.push({ label, value: evalValue(action.value, scope), ref: source.ref });
               break;
             case 'globalMult':
-              mods.globalMults.push({ label, value: evalValue(action.value, scope) });
+              mods.globalMults.push({ label, value: evalValue(action.value, scope), ref: source.ref });
               break;
             case 'globalMultAdd':
-              mods.globalAdds.push({ label, value: evalValue(action.value, scope) });
+              mods.globalAdds.push({ label, value: evalValue(action.value, scope), ref: source.ref });
               break;
             case 'captureMult':
-              mods.captureMults.push({ label, value: evalValue(action.value, scope) });
+              mods.captureMults.push({ label, value: evalValue(action.value, scope), ref: source.ref });
               break;
             default:
               break;

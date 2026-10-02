@@ -253,7 +253,16 @@ export function processEvents(
     }
     rt.chain.resolutions++;
     if (ev.announce) {
-      pushStep(ctx, { kind: 'effect', depth: ev.depth, title: ev.announce, source: ev.source.label, cardUid: ev.source.cardUid, tone: toneForSource(ev.source) });
+      pushStep(ctx, {
+        kind: 'effect',
+        depth: ev.depth,
+        title: ev.announce,
+        source: ev.source.label,
+        sourceKind: ev.source.kind,
+        sourceId: ev.source.id,
+        cardUid: ev.source.cardUid,
+        tone: toneForSource(ev.source),
+      });
     }
     const core = applyCore(ctx, ev);
     describeEvent(ctx, ev);
@@ -686,7 +695,16 @@ function fmtNum(n: number): string {
 }
 
 function step(ctx: GameContext, ev: GameEvent, kind: ChainStepKind, title: string, extra: Partial<ChainStep> = {}): void {
-  pushStep(ctx, { kind, depth: ev.depth, title, source: ev.source.kind === 'core' ? undefined : ev.source.label, ...extra });
+  const sourced = ev.source.kind !== 'core';
+  pushStep(ctx, {
+    kind,
+    depth: ev.depth,
+    title,
+    source: sourced ? ev.source.label : undefined,
+    sourceKind: sourced ? ev.source.kind : undefined,
+    sourceId: sourced ? ev.source.id : undefined,
+    ...extra,
+  });
 }
 
 function describeEvent(ctx: GameContext, ev: GameEvent): void {
