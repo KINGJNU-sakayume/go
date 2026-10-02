@@ -1,0 +1,29 @@
+{
+  "theme": "linocut",
+  "source": "user-provided card sheet crop",
+  "image": "./months-01-03.webp",
+  "cardWidth": 100,
+  "cardHeight": 148,
+  "columns": 4,
+  "rows": 3,
+  "months": {
+    "1": [
+      "m01-bright",
+      "m01-ribbon",
+      "m01-pi-a",
+      "m01-pi-b"
+    ],
+    "2": [
+      "m02-animal",
+      "m02-ribbon",
+      "m02-pi-a",
+      "m02-pi-b"
+    ],
+    "3": [
+      "m03-bright",
+      "m03-ribbon",
+      "m03-pi-a",
+      "m03-pi-b"
+    ]
+  }
+}
