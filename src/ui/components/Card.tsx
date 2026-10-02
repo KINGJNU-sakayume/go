@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import { ANIMAL_INFO, ENHANCEMENTS, JOKER_FORMS, MONTH_INFO, MUTATIONS, RIBBON_INFO, type CardView } from '../../game';
 import { MonthMotif } from './CardArt';
+import { linocutArt, useCardTheme } from '../theme/linocut';
 
 export type CardSize = 'xs' | 'sm' | 'md' | 'lg';
 
@@ -18,9 +19,14 @@ interface CardProps {
   highlight?: boolean;
   dim?: boolean;
   covered?: boolean;
+  /** February frost: the card cannot be paired right now. */
+  frozen?: boolean;
   onClick?: () => void;
   onHover?: (view: CardView | null) => void;
   className?: string;
+  /** FLIP motion key (the card uid) and the zone the card sits in. */
+  flipId?: string;
+  flipZone?: 'hand' | 'field' | 'captured' | 'other';
 }
 
 function CategoryMark({ view }: { view: CardView }): ReactElement | null {
@@ -85,8 +91,10 @@ function CategoryMark({ view }: { view: CardView }): ReactElement | null {
   return <g>{parts}</g>;
 }
 
-export function Card({ view, size = 'md', selected, highlight, dim, covered, onClick, onHover, className = '' }: CardProps): ReactElement {
+export function Card({ view, size = 'md', selected, highlight, dim, covered, frozen, onClick, onHover, className = '', flipId, flipZone }: CardProps): ReactElement {
   const { w, h } = SIZES[size];
+  const theme = useCardTheme();
+  const art = covered ? undefined : linocutArt(theme, view, w, h);
   const month = view.printedMonth;
   const info = month ? MONTH_INFO[month] : undefined;
   const border = view.joker ? '#7c3aed' : (info?.color ?? '#555');
@@ -103,6 +111,8 @@ export function Card({ view, size = 'md', selected, highlight, dim, covered, onC
       className={`relative shrink-0 select-none rounded-md ${onClick ? 'card-hover cursor-pointer' : 'cursor-default'} ${selected ? 'ring-4 ring-amber-400 -translate-y-2' : ''} ${highlight ? 'glow' : ''} ${dim ? 'opacity-40' : ''} ${className}`}
       style={{ width: w, height: h }}
       aria-label={covered ? '가려진 카드' : `${view.name} Lv.${view.level}`}
+      data-flip={flipId}
+      data-flip-zone={flipZone}
     >
       {covered ? (
         <svg viewBox="0 0 60 92" width={w} height={h} className="rounded-md">
@@ -114,6 +124,20 @@ export function Card({ view, size = 'md', selected, highlight, dim, covered, onC
             ?
           </text>
         </svg>
+      ) : art ? (
+        <div className="relative overflow-hidden rounded-md drop-shadow-md" style={{ width: w, height: h, ...art }}>
+          {(extraMonths.length > 0 || dual.length > 0) && size !== 'xs' && (
+            <span className="absolute left-0.5 top-[22%] rounded-sm bg-[#0e7490] px-0.5 text-[9px] font-bold leading-tight text-white">
+              +{[...extraMonths, ...dual].join(',')}
+            </span>
+          )}
+          {view.wild && <span className="absolute left-1 top-[38%] text-[11px] font-black text-[#9333ea]">萬</span>}
+          {size !== 'xs' && (
+            <span className="absolute inset-x-0 bottom-0 truncate bg-black/45 px-0.5 text-center text-[9px] font-bold leading-[13px] text-white">
+              {view.name}
+            </span>
+          )}
+        </div>
       ) : (
         <svg viewBox="0 0 60 92" width={w} height={h} className="rounded-md drop-shadow-md">
           <rect x="1" y="1" width="58" height="90" rx="6" fill={view.joker ? '#1e1b2e' : '#fbf3e4'} stroke={border} strokeWidth="2.5" />
@@ -144,6 +168,15 @@ export function Card({ view, size = 'md', selected, highlight, dim, covered, onC
           </text>
         </svg>
       )}
+      {frozen && !covered && (
+        <span
+          className="pointer-events-none absolute inset-0 flex items-start justify-end rounded-md p-0.5"
+          style={{ background: 'linear-gradient(160deg, rgba(186,230,253,0.55), rgba(125,211,252,0.25))', boxShadow: 'inset 0 0 0 2px rgba(224,242,254,0.9)' }}
+          title="서리: 얼어붙어 지금은 짝을 맞출 수 없음"
+        >
+          <span className="rounded-sm bg-sky-900/80 px-0.5 text-[10px] font-black text-sky-100">凍</span>
+        </span>
+      )}
       {!covered && view.level > 1 && (
         <span className="absolute -top-1.5 -right-1.5 rounded-full bg-amber-500 px-1 text-[9px] font-black text-black shadow">Lv{view.level}</span>
       )}
@@ -160,10 +193,10 @@ export function Card({ view, size = 'md', selected, highlight, dim, covered, onC
   );
 }
 
-export function CardBack({ size = 'md', count }: { size?: CardSize; count?: number }): ReactElement {
+export function CardBack({ size = 'md', count, flipId }: { size?: CardSize; count?: number; flipId?: string }): ReactElement {
   const { w, h } = SIZES[size];
   return (
-    <div className="relative" style={{ width: w, height: h }}>
+    <div className="relative" style={{ width: w, height: h }} data-flip={flipId}>
       <svg viewBox="0 0 60 92" width={w} height={h}>
         <rect x="1" y="1" width="58" height="90" rx="6" fill="#8e1b1b" stroke="#f5d68a" strokeWidth="2" />
         <rect x="7" y="7" width="46" height="78" rx="4" fill="none" stroke="#f5d68a55" strokeWidth="1.5" />

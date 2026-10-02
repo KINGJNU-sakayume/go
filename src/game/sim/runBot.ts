@@ -1,4 +1,5 @@
-import type { RunState } from '../types';
+import type { JokboId, RewardOption, RunState } from '../types';
+import { ALL_JOKBO } from '../types';
 import { getCardDef } from '../cards/definitions';
 import { opCandidates, opChoices, opNeedsCard, opNeedsChoice, resolveOperation } from '../engine/operations';
 import { advanceToNextStage, chooseCrossroads, continueAfterStage, pickReward } from '../engine/run';
@@ -16,6 +17,34 @@ function junkScore(run: RunState, uid: string): number {
   return s;
 }
 
+/** The Jokbo this run leans on: most triggered so far, levels break ties (피 by default). */
+export function focusJokbo(run: RunState): JokboId {
+  let best: JokboId = 'pi';
+  let score = -1;
+  for (const j of ALL_JOKBO) {
+    const s = (run.stats.jokboTriggers[j] ?? 0) + run.jokbo[j].level * 3;
+    if (s > score) {
+      best = j;
+      score = s;
+    }
+  }
+  return best;
+}
+
+/** Reference reward pick: strong talismans, then training the focus Jokbo, then card work. */
+function pickRewardOption(run: RunState, opts: RewardOption[]): RewardOption {
+  const focus = focusJokbo(run);
+  const rank = (o: RewardOption): number => {
+    if (o.kind === 'talisman') return o.rarity === 'common' ? 3 : 0;
+    if (o.kind === 'upgradeJokbo') return o.jokboId === focus ? 1 : 4;
+    if (o.kind === 'upgradeCard') return 2;
+    if (o.kind === 'enhanceCard') return 5;
+    if (o.kind === 'removeCard') return 6;
+    return 7;
+  };
+  return [...opts].sort((a, b) => rank(a) - rank(b))[0];
+}
+
 function resolveOps(run: RunState): RunState {
   let cur = run;
   let guard = 0;
@@ -30,7 +59,9 @@ function resolveOps(run: RunState): RunState {
     const cardUids = opNeedsCard(op) ? sorted.slice(0, Math.max(1, op.count)) : undefined;
     const choices = opNeedsChoice(op) ? opChoices(cur, op, cardUids?.[0]) : [];
     try {
-      cur = resolveOperation(cur, op.id, { cardUids, choiceId: choices[0]?.id, jokboId: op.kind === 'upgradeJokbo' ? 'pi' : undefined });
+      const focus = focusJokbo(cur);
+      const choiceId = op.kind === 'upgradeJokbo' && choices.some((c) => c.id === focus) ? focus : choices[0]?.id;
+      cur = resolveOperation(cur, op.id, { cardUids, choiceId, jokboId: op.kind === 'upgradeJokbo' ? focus : undefined });
     } catch {
       cur = { ...cur, ops: cur.ops.slice(1) };
     }
@@ -52,15 +83,18 @@ export function botPlayRun(run: RunState): RunSimResult {
     if (cur.phase === 'stage') cur = botPlayStage(cur, { go: false });
     else if (cur.phase === 'stageResult') cur = continueAfterStage(cur);
     else if (cur.phase === 'reward') {
-      const opts = cur.reward!.options;
-      const pick = opts.find((o) => o.kind === 'upgradeJokbo') ?? opts.find((o) => o.kind === 'talisman') ?? opts[0];
+      const pick = pickRewardOption(cur, cur.reward!.options);
       cur = resolveOps(pickReward(cur, pick.id));
     } else if (cur.phase === 'crossroads') {
       cur = chooseCrossroads(cur, cur.stageIndex % 2 === 0 ? 'shop' : cur.crossroads!.options[1].id);
     } else if (cur.phase === 'shop') {
       for (let k = 0; k < 6; k++) {
         const offers = cur.shop!.offers.filter((o) => !o.sold && currentPrice(cur, o) <= cur.coins);
-        const o = offers.find((x) => x.service === 'talisman') ?? offers.find((x) => x.service === 'jokboTraining') ?? offers.find((x) => x.service === 'removal');
+        const o =
+          offers.find((x) => x.service === 'talisman') ??
+          offers.find((x) => x.service === 'jokboTraining') ??
+          offers.find((x) => x.service === 'upgrade') ??
+          offers.find((x) => x.service === 'removal' && cur.deck.length > 40);
         if (!o) break;
         try {
           cur = resolveOps(buyOffer(cur, o.id).run);

@@ -43,7 +43,12 @@ export function globalMultiplier(ctx: GameContext, mods: ScoreMods, entries: Sco
   for (const e of mods.globalAdds) {
     if (!e.value) continue;
     add += e.value;
-    entries.push({ source: e.label, kind: 'globalMultAdd', value: round2(e.value) });
+    entries.push({ source: e.label, sourceKind: e.ref?.kind, sourceId: e.ref?.id, kind: 'globalMultAdd', value: round2(e.value) });
+  }
+  const go = stage?.goCount ?? 0;
+  if (go > 0 && BALANCE.goMultAdd) {
+    add += go * BALANCE.goMultAdd;
+    entries.push({ source: `${go}고`, kind: 'globalMultAdd', value: round2(go * BALANCE.goMultAdd) });
   }
   let mult = 1 + add;
   const shake = shakeFactor(stage?.shakeCount ?? 0);
@@ -58,7 +63,7 @@ export function globalMultiplier(ctx: GameContext, mods: ScoreMods, entries: Sco
   for (const e of mods.globalMults) {
     if (e.value === 1) continue;
     mult *= e.value;
-    entries.push({ source: e.label, kind: 'globalMult', value: round2(e.value) });
+    entries.push({ source: e.label, sourceKind: e.ref?.kind, sourceId: e.ref?.id, kind: 'globalMult', value: round2(e.value) });
   }
   return Math.max(0, mult);
 }
@@ -74,7 +79,7 @@ export function computeJokboScore(ctx: GameContext, scope: ScoreScope): ScoreBre
   const base = (scope.tradPoints ?? 0) * rules.pointValue;
   entries.push({ source: `${JOKBO_DEFS[jokboId].name} ${scope.tradPoints ?? 0}점`, kind: 'base', value: base });
   let baseMult = product(mods.baseMults);
-  for (const e of mods.baseMults) entries.push({ source: e.label, kind: 'baseMult', value: round2(e.value) });
+  for (const e of mods.baseMults) entries.push({ source: e.label, sourceKind: e.ref?.kind, sourceId: e.ref?.id, kind: 'baseMult', value: round2(e.value) });
 
   // June boss: each retrigger weakens the next one.
   const decay = ctx.stageDef?.mechanics.retriggerDecay;
@@ -92,7 +97,7 @@ export function computeJokboScore(ctx: GameContext, scope: ScoreScope): ScoreBre
   if (power) entries.push({ source: '카드 파워', kind: 'power', value: power });
 
   let flat = sum(mods.flats);
-  for (const e of mods.flats) if (e.value) entries.push({ source: e.label, kind: 'flat', value: Math.round(e.value) });
+  for (const e of mods.flats) if (e.value) entries.push({ source: e.label, sourceKind: e.ref?.kind, sourceId: e.ref?.id, kind: 'flat', value: Math.round(e.value) });
   if (progress?.bonusFlat) {
     flat += progress.bonusFlat;
     entries.push({ source: '족보 수련', kind: 'flat', value: progress.bonusFlat });
@@ -111,13 +116,13 @@ export function computeJokboScore(ctx: GameContext, scope: ScoreScope): ScoreBre
   for (const e of mods.jokboAdds) {
     if (!e.value) continue;
     addTotal += e.value;
-    entries.push({ source: e.label, kind: 'jokboMultAdd', value: round2(e.value) });
+    entries.push({ source: e.label, sourceKind: e.ref?.kind, sourceId: e.ref?.id, kind: 'jokboMultAdd', value: round2(e.value) });
   }
   let jokboMult = levelMult * (1 + addTotal);
   for (const e of mods.jokboMults) {
     if (e.value === 1) continue;
     jokboMult *= e.value;
-    entries.push({ source: e.label, kind: 'jokboMult', value: round2(e.value) });
+    entries.push({ source: e.label, sourceKind: e.ref?.kind, sourceId: e.ref?.id, kind: 'jokboMult', value: round2(e.value) });
   }
 
   const globalMult = globalMultiplier(ctx, mods, entries);
@@ -155,7 +160,7 @@ export function computeCaptureScore(ctx: GameContext, scope: ScoreScope): ScoreB
   for (const e of mods.flats) {
     if (!e.value) continue;
     flat += e.value;
-    entries.push({ source: e.label, kind: 'flat', value: Math.round(e.value) });
+    entries.push({ source: e.label, sourceKind: e.ref?.kind, sourceId: e.ref?.id, kind: 'flat', value: Math.round(e.value) });
   }
   let mult = 1;
   const stage = ctx.stage;
@@ -174,12 +179,12 @@ export function computeCaptureScore(ctx: GameContext, scope: ScoreScope): ScoreB
   for (const e of [...mods.captureMults, ...mods.jokboMults]) {
     if (e.value === 1) continue;
     mult *= e.value;
-    entries.push({ source: e.label, kind: 'captureMult', value: round2(e.value) });
+    entries.push({ source: e.label, sourceKind: e.ref?.kind, sourceId: e.ref?.id, kind: 'captureMult', value: round2(e.value) });
   }
   for (const e of mods.jokboAdds) {
     if (!e.value) continue;
     mult *= 1 + e.value;
-    entries.push({ source: e.label, kind: 'captureMult', value: round2(1 + e.value) });
+    entries.push({ source: e.label, sourceKind: e.ref?.kind, sourceId: e.ref?.id, kind: 'captureMult', value: round2(1 + e.value) });
   }
   const globalMult = globalMultiplier(ctx, mods, entries);
   const raw = (base + power + flat) * mult * globalMult;
@@ -203,13 +208,13 @@ export function computeBonusScore(ctx: GameContext, scope: ScoreScope): ScoreBre
   for (const e of mods.flats) {
     if (!e.value) continue;
     flat += e.value;
-    entries.push({ source: e.label, kind: 'flat', value: Math.round(e.value) });
+    entries.push({ source: e.label, sourceKind: e.ref?.kind, sourceId: e.ref?.id, kind: 'flat', value: Math.round(e.value) });
   }
   let mult = 1;
   for (const e of [...mods.captureMults, ...mods.jokboMults]) {
     if (e.value === 1) continue;
     mult *= e.value;
-    entries.push({ source: e.label, kind: 'captureMult', value: round2(e.value) });
+    entries.push({ source: e.label, sourceKind: e.ref?.kind, sourceId: e.ref?.id, kind: 'captureMult', value: round2(e.value) });
   }
   const globalMult = scope.applyGlobal ? globalMultiplier(ctx, mods, entries) : 1;
   const raw = (base + flat) * mult * globalMult;

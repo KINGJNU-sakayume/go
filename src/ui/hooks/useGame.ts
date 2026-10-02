@@ -14,20 +14,27 @@ import {
 
 export type AnimSpeed = 'normal' | 'fast' | 'instant';
 
+export type CardTheme = 'classic' | 'linocut';
+
 export interface Settings {
   animSpeed: AnimSpeed;
+  /** Card art: the original SVG motifs, or the linocut prints where they exist (January so far). */
+  cardTheme: CardTheme;
+  /** "탁" when cards are slapped together. */
+  sound: boolean;
 }
 
 const SETTINGS_KEY = 'hwatu-roguelike/settings';
+const DEFAULT_SETTINGS: Settings = { animSpeed: 'normal', cardTheme: 'linocut', sound: true };
 
 function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { animSpeed: 'normal', ...(JSON.parse(raw) as Partial<Settings>) };
+    if (raw) return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) };
   } catch {
     // storage unavailable
   }
-  return { animSpeed: 'normal' };
+  return DEFAULT_SETTINGS;
 }
 
 export interface GameApi {

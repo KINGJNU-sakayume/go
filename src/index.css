@@ -5,8 +5,24 @@
   --font-serif: "Noto Serif KR", "Nanum Myeongjo", serif;
 }
 
+/*
+ * Palette: 먹 (ink), 옻칠 (lacquer), 한지 (paper), 주홍 (vermilion seal), 금박 (gold leaf),
+ * 담요 (the green table felt). Everything on screen is built from these.
+ */
 :root {
   color-scheme: dark;
+  --ink: #120d0b;
+  --lacquer: #1e1512;
+  --lacquer-2: #2a1d18;
+  --hanji: #f1e6cf;
+  --hanji-dim: #d8c7a4;
+  --ink-text: #2a1f17;
+  --vermilion: #b8261c;
+  --vermilion-hi: #d8432f;
+  --gold: #c9a25c;
+  --gold-hi: #e8c77e;
+  --felt: #1d3b2a;
+  --indigo: #2b3f73;
 }
 
 html,
@@ -18,35 +34,70 @@ body,
 body {
   margin: 0;
   background:
-    radial-gradient(1200px 600px at 50% -10%, rgba(185, 28, 28, 0.18), transparent 60%),
-    radial-gradient(900px 500px at 100% 100%, rgba(30, 64, 175, 0.15), transparent 60%),
-    #120d0b;
-  color: #f5ede1;
+    radial-gradient(1200px 600px at 50% -10%, rgba(184, 38, 28, 0.16), transparent 60%),
+    radial-gradient(900px 500px at 100% 100%, rgba(43, 63, 115, 0.14), transparent 60%),
+    var(--ink);
+  color: #f2e8d8;
   font-family: var(--font-sans);
+  font-size: 14px;
 }
 
+/* the green table: woven felt with a soft lamp in the middle */
 .felt {
   background:
-    radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.05), transparent 60%),
-    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.012) 0 2px, transparent 2px 6px),
-    #1d3b2a;
-  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.55);
+    radial-gradient(ellipse at 50% 35%, rgba(255, 244, 214, 0.07), transparent 65%),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px),
+    var(--felt);
+  box-shadow:
+    inset 0 0 0 1px rgba(201, 162, 92, 0.25),
+    inset 0 0 80px rgba(0, 0, 0, 0.6);
 }
 
+/* 옻칠 lacquer tray with a thin gold-leaf edge */
 .panel {
-  background: rgba(28, 20, 16, 0.86);
-  border: 1px solid rgba(214, 180, 120, 0.22);
-  border-radius: 12px;
+  background: linear-gradient(180deg, var(--lacquer-2), var(--lacquer));
+  border: 1px solid rgba(201, 162, 92, 0.22);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgba(255, 235, 200, 0.05);
+}
+
+/* 한지 paper surface (ledger, scoreboard, reward items) */
+.hanji {
+  background:
+    radial-gradient(circle at 20% 15%, rgba(255, 255, 255, 0.35), transparent 40%),
+    repeating-linear-gradient(115deg, rgba(120, 90, 50, 0.05) 0 2px, transparent 2px 7px),
+    var(--hanji);
+  color: var(--ink-text);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-serif);
+  font-weight: 900;
+  font-size: 0.875rem;
+  letter-spacing: 0.04em;
+  color: var(--gold-hi);
+}
+.section-title::before {
+  content: "";
+  width: 0.55rem;
+  height: 0.55rem;
+  background: var(--vermilion);
+  border-radius: 1px;
+  box-shadow: 0 0 0 1px rgba(255, 220, 200, 0.25);
 }
 
 .btn {
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 0.45rem 0.9rem;
   font-weight: 700;
   transition: transform 0.08s ease, filter 0.15s ease, opacity 0.15s;
 }
 .btn:hover:not(:disabled) {
-  filter: brightness(1.15);
+  filter: brightness(1.12);
 }
 .btn:active:not(:disabled) {
   transform: translateY(1px);
@@ -55,26 +106,36 @@ body {
   opacity: 0.4;
   cursor: not-allowed;
 }
+/* 주홍 낙관 */
 .btn-red {
-  background: linear-gradient(#c62828, #8e1b1b);
-  color: #fff7ed;
+  background: var(--vermilion);
+  color: #fff4ea;
+  box-shadow: inset 0 0 0 1px rgba(255, 210, 190, 0.35), 0 2px 0 #6f1510;
 }
+/* 한지에 먹글씨 */
 .btn-gold {
-  background: linear-gradient(#e0b04a, #a67a1e);
-  color: #1c1208;
+  background: var(--hanji);
+  color: var(--ink-text);
+  box-shadow: inset 0 0 0 1px rgba(90, 60, 30, 0.35), 0 2px 0 #8a7650;
 }
+/* 먹 */
 .btn-dark {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #f5ede1;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(201, 162, 92, 0.3);
+  color: #f2e8d8;
 }
+/* 쪽빛 */
 .btn-blue {
-  background: linear-gradient(#2f6fdb, #1d4596);
-  color: #fff;
+  background: var(--indigo);
+  color: #eef2ff;
+  box-shadow: inset 0 0 0 1px rgba(180, 200, 255, 0.3), 0 2px 0 #18234a;
 }
+/* 흔들기: 주홍 테두리 */
 .btn-pink {
-  background: linear-gradient(#db2777, #9d174d);
-  color: #fff1f7;
+  background: transparent;
+  color: #ffd9cf;
+  border: 1.5px solid var(--vermilion-hi);
+  box-shadow: 0 0 10px rgba(216, 67, 47, 0.35);
 }
 
 .card-hover {
@@ -121,10 +182,10 @@ body {
 @keyframes glow {
   0%,
   100% {
-    box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.9), 0 0 16px rgba(250, 204, 21, 0.6);
+    box-shadow: 0 0 0 2px rgba(232, 199, 126, 0.95), 0 0 16px rgba(232, 199, 126, 0.6);
   }
   50% {
-    box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.5), 0 0 6px rgba(250, 204, 21, 0.3);
+    box-shadow: 0 0 0 2px rgba(232, 199, 126, 0.5), 0 0 6px rgba(232, 199, 126, 0.3);
   }
 }
 .glow {
@@ -147,11 +208,126 @@ body {
   animation: shake 0.2s linear 3;
 }
 
+/* a talisman that just fired jolts like paper caught by a gust */
+@keyframes talisman-jolt {
+  0% {
+    transform: rotate(0) scale(1);
+  }
+  20% {
+    transform: rotate(-9deg) scale(1.12);
+  }
+  45% {
+    transform: rotate(7deg) scale(1.08);
+  }
+  70% {
+    transform: rotate(-3deg) scale(1.03);
+  }
+  100% {
+    transform: rotate(0) scale(1);
+  }
+}
+.talisman-jolt {
+  animation: talisman-jolt 0.5s ease-out both;
+}
+
+/* a number rising off the object that produced it */
+@keyframes rise-fade {
+  0% {
+    transform: translate(-50%, 4px) scale(0.8);
+    opacity: 0;
+  }
+  15% {
+    transform: translate(-50%, -6px) scale(1.1);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -26px) scale(1);
+    opacity: 0;
+  }
+}
+.rise-fade {
+  animation: rise-fade 1.1s ease-out both;
+}
+
+/* 낙관: a red seal stamped onto the table */
+@keyframes stamp-in {
+  0% {
+    transform: scale(2.4) rotate(-14deg);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(0.92) rotate(-6deg);
+    opacity: 1;
+  }
+  75% {
+    transform: scale(1.04) rotate(-7deg);
+  }
+  100% {
+    transform: scale(1) rotate(-7deg);
+    opacity: 1;
+  }
+}
+.stamp-in {
+  animation: stamp-in 0.38s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* brush calligraphy sweeping in */
+@keyframes brush-in {
+  0% {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0.4;
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+}
+.brush-in {
+  animation: brush-in 0.32s ease-out both;
+}
+
+/* the score number thumps when it changes */
+@keyframes thump {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.thump {
+  animation: thump 0.22s ease-out;
+}
+
+.ink-shadow {
+  text-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.55),
+    0 0 18px rgba(0, 0, 0, 0.5);
+}
+
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(201, 162, 92, 0.25);
   border-radius: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .talisman-jolt,
+  .rise-fade,
+  .stamp-in,
+  .brush-in,
+  .thump,
+  .pop-in,
+  .glow {
+    animation: none !important;
+  }
 }

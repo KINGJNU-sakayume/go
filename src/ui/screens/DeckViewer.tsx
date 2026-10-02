@@ -95,7 +95,7 @@ export function DeckStats({ run }: { run: RunState }): ReactElement {
         <div className="mb-1 text-sm font-bold">총 {n}장 · 달 분포</div>
         <div className="space-y-px">
           {ALL_MONTHS.map((m, i) => (
-            <div key={m} className="flex items-center gap-1 text-[11px]">
+            <div key={m} className="flex items-center gap-1 text-xs">
               <span className="w-10 text-stone-400">{m}월</span>
               <div className="h-2 flex-1 rounded bg-stone-800">
                 <div className="h-full rounded" style={{ width: `${(byMonth[i] / maxMonth) * 100}%`, background: MONTH_INFO[m].color }} />
@@ -113,7 +113,7 @@ export function DeckStats({ run }: { run: RunState }): ReactElement {
             <b>{v}</b>
           </div>
         ))}
-        <div className="mt-1 text-[10px] text-stone-500">다중 종류 카드는 각 종류에 모두 셈.</div>
+        <div className="mt-1 text-xs text-stone-500">다중 종류 카드는 각 종류에 모두 셈.</div>
       </div>
       <div>
         <div className="mb-1 text-sm font-bold">족보 재료 밀도</div>
@@ -121,11 +121,11 @@ export function DeckStats({ run }: { run: RunState }): ReactElement {
           <div key={k} className="flex justify-between text-sm">
             <span className="text-stone-400">{k}</span>
             <b>
-              {v} <span className="text-[10px] font-normal text-stone-500">({((v / Math.max(1, n)) * 100).toFixed(0)}%)</span>
+              {v} <span className="text-xs font-normal text-stone-500">({((v / Math.max(1, n)) * 100).toFixed(0)}%)</span>
             </b>
           </div>
         ))}
-        <div className="mt-1 text-[10px] text-stone-500">정답 빌드는 알려주지 않습니다 — 숫자만 보여줍니다.</div>
+        <div className="mt-1 text-xs text-stone-500">정답 빌드는 알려주지 않습니다 — 숫자만 보여줍니다.</div>
       </div>
     </div>
   );

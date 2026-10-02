@@ -23,8 +23,10 @@ const SERVICE_INFO: Record<ShopServiceKind, { title: string; description: string
   jokboTraining: { title: '족보 수련', description: '족보 레벨 +1.', rarity: 'uncommon' },
   talisman: { title: '부적', description: '', rarity: 'common' },
   jokerWorkshop: { title: '조커 공방', description: '조커 한 장을 특수 조커로 변신.', rarity: 'rare' },
-  monthDye: { title: '달 염색', description: '카드 한 장의 달을 원하는 달로 바꿈.', rarity: 'uncommon' },
-  ribbonDye: { title: '띠 염색', description: '띠 한 장을 원하는 홍단/청단/초단 칸으로 바꿈.', rarity: 'uncommon' },
+  monthDye: { title: '달 염색', description: '카드 한 장의 달을 인쇄된 달에서 1~2달 떨어진 달 중 하나로 바꿈 (확정할 때 무작위).', rarity: 'uncommon' },
+  monthDyeExact: { title: '화공의 붓', description: '카드 한 장의 달을 원하는 달로 바꿈.', rarity: 'rare' },
+  ribbonDye: { title: '띠 염색', description: '띠 한 장의 색(홍단·청단·초단)을 고르면 그 색 세트의 칸 중 하나로 바뀜 (칸은 무작위).', rarity: 'uncommon' },
+  ribbonDyeExact: { title: '장인의 염료', description: '띠 한 장을 원하는 홍단/청단/초단 칸으로 바꿈.', rarity: 'rare' },
   purify: { title: '정화', description: '카드 한 장의 저주(부정 효과) 하나를 제거.', rarity: 'common' },
   enhancement: { title: '강화 부여', description: '', rarity: 'uncommon' },
   addJoker: { title: '조커 구입', description: '서비스 조커 1장을 덱에 추가.', rarity: 'uncommon' },
@@ -82,6 +84,7 @@ function serviceOffer(run: RunState, rng: Rng, service: ShopServiceKind, idx: nu
     case 'purify':
       return hasNegative(run) ? base : undefined;
     case 'ribbonDye':
+    case 'ribbonDyeExact':
       return hasRibbon(run) ? base : undefined;
     default:
       return base;
@@ -128,7 +131,9 @@ function generateOffers(run: RunState, nodeIndex: number, rerolls: number): Shop
     { item: 'jokboTraining', weight: 2.5 },
     { item: 'jokerWorkshop', weight: 0.8 },
     { item: 'monthDye', weight: 1.5 },
+    { item: 'monthDyeExact', weight: 0.5 },
     { item: 'ribbonDye', weight: 1.2 },
+    { item: 'ribbonDyeExact', weight: 0.4 },
     { item: 'purify', weight: hasNegative(run) ? 2 : 0 },
     { item: 'enhancement', weight: 2 },
     { item: 'addJoker', weight: 0.6 },
@@ -180,8 +185,12 @@ function offerSteps(offer: ShopOffer, price: number, amplified: boolean): Outcom
       return [interactive('jokerWorkshop')];
     case 'monthDye':
       return [interactive('monthShift')];
+    case 'monthDyeExact':
+      return [interactive('monthShift', { exact: true })];
     case 'ribbonDye':
       return [interactive('ribbonDye')];
+    case 'ribbonDyeExact':
+      return [interactive('ribbonDye', { exact: true })];
     case 'purify':
       return [interactive('purify')];
     case 'enhancement':

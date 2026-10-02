@@ -9,6 +9,7 @@ import type {
   MutationId,
   MutationInstance,
   OperationChoice,
+  OperationKind,
   OperationInput,
   OutcomeStep,
   PendingOperation,
@@ -31,6 +32,7 @@ import { hasTalisman, type ActiveSource } from '../effects/sources';
 import { JOKBO_DEFS } from '../jokbo/definitions';
 import { evolutionsFor, getEvolution } from '../jokbo/evolutions';
 import { allTalismans, getTalismanDef } from '../talismans/registry';
+import { pickJokbo } from '../rewards/rewards';
 import { onCardLevelChange, onJokboLevelChange, pushOp } from './levelups';
 import { emitRunEvent } from './runEvents';
 import { cloneRun } from './stage';
@@ -188,10 +190,12 @@ export function opCandidates(run: RunState, op: PendingOperation): string[] {
     }
     case 'mutateCard':
     case 'monthShift':
-    case 'typeGraft':
     case 'splitMoon':
     case 'ancientCard':
       pool = filterCards(run, nonJokerFilter(op.filter));
+      break;
+    case 'typeGraft':
+      pool = filterCards(run, nonJokerFilter(op.filter)).filter((u) => graftCandidates(run, u).length > 0);
       break;
     case 'ribbonDye':
       pool = filterCards(run, nonJokerFilter({ ...(op.filter ?? {}), categories: ['ribbon'] }));
@@ -238,12 +242,25 @@ function pickWeightedDistinct<T>(rng: Rng, items: { item: T; weight: number; key
   return out;
 }
 
-function neighbor(m: Month, exclude: Month[]): Month {
-  for (const d of [1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6]) {
-    const x = (((m - 1 + d + 120) % 12) + 1) as Month;
-    if (!exclude.includes(x)) return x;
+/** Months `minD..maxD` steps away from `center` (wrapping 12 ↔ 1), minus `exclude`. Never empty. */
+export function monthsAround(center: Month, minD: number, maxD: number, exclude: readonly Month[] = []): Month[] {
+  const out: Month[] = [];
+  for (let d = minD; d <= maxD; d++) {
+    for (const s of [-d, d]) {
+      const m = (((((center - 1 + s) % 12) + 12) % 12) + 1) as Month;
+      if (!exclude.includes(m) && !out.includes(m)) out.push(m);
+    }
   }
-  return m;
+  if (!out.length) return ALL_MONTHS.filter((m) => !exclude.includes(m));
+  return out.sort((a, b) => a - b);
+}
+
+function monthList(ms: readonly Month[]): string {
+  return ms.map((m) => `${m}월`).join('·');
+}
+
+function nums(list: string | undefined): Month[] {
+  return (list ?? '').split(',').filter(Boolean).map((x) => Number(x) as Month);
 }
 
 const RIBBON_SLOTS: { type: RibbonType; months: Month[] }[] = [
@@ -252,10 +269,108 @@ const RIBBON_SLOTS: { type: RibbonType; months: Month[] }[] = [
   { type: 'chodan', months: [4, 5, 7] },
 ];
 
+// ------------------------------------------------------------------ rolled identity operations
+
+/** Identity operations roll inside a published range unless the operation is the exact (premium) one. */
+export function opIsRanged(op: Pick<PendingOperation, 'kind' | 'exact' | 'jokboId' | 'enhancement'>): boolean {
+  if (op.exact) return false;
+  switch (op.kind) {
+    case 'monthShift':
+    case 'splitMoon':
+    case 'typeGraft':
+    case 'ribbonDye':
+      return true;
+    case 'upgradeJokbo':
+      return !op.jokboId;
+    case 'enhanceCard':
+      return op.enhancement === 'dualMonth';
+    default:
+      return false;
+  }
+}
+
+const ROLLED_KINDS: OperationKind[] = ['gambleCard', 'ancientCard', 'discoverMonth'];
+
+/** The result is rolled on confirmation, so the UI must not preview it (only the range). */
+export function opHidesOutcome(op: PendingOperation, choiceId?: string): boolean {
+  return opIsRanged(op) || ROLLED_KINDS.includes(op.kind) || !!choiceId?.includes('~');
+}
+
+function identityFor(run: RunState, uid: string) {
+  return identityOf(runCtx(run), uid);
+}
+
+export function shiftCandidates(run: RunState, uid: string): Month[] {
+  const id = identityFor(run, uid);
+  const p = id.printedMonth ?? 1;
+  const [a, b] = BALANCE.monthRollRange.shift;
+  return monthsAround(p, a, b, [p]);
+}
+
+export function splitCandidates(run: RunState, uid: string): Month[] {
+  const id = identityFor(run, uid);
+  const [a, b] = BALANCE.monthRollRange.split;
+  return monthsAround(id.printedMonth ?? 1, a, b, id.scoringMonths);
+}
+
+export function dualCandidates(run: RunState, uid: string): Month[] {
+  const id = identityFor(run, uid);
+  const [a, b] = BALANCE.monthRollRange.dual;
+  return monthsAround(id.printedMonth ?? 1, a, b, id.scoringMonths);
+}
+
+export function graftCandidates(run: RunState, uid: string): CardCategory[] {
+  const id = identityFor(run, uid);
+  return (['animal', 'ribbon', 'pi'] as CardCategory[]).filter((c) => !id.categories.includes(c));
+}
+
+function ribbonSlotCandidates(run: RunState, uid: string, type: RibbonType): Month[] {
+  const id = identityFor(run, uid);
+  const slots = RIBBON_SLOTS.find((s) => s.type === type)?.months ?? [];
+  return slots.filter((m) => !(type === id.ribbonType && m === id.printedMonth));
+}
+
+/** Plain-language range of a rolled operation (shown instead of a result preview). */
+export function opRangeText(run: RunState, op: PendingOperation, uid?: string, choiceId?: string): string | undefined {
+  if (op.kind === 'gambleCard') return `성공 ${Math.round((op.chance ?? 0.5) * 100)}%: 그 카드를 완전 복제 · 실패: 무작위 저주 변이 — 확정해야 결과가 나옵니다.`;
+  if (op.kind === 'ancientCard') return 'Lv +4, 그리고 무작위 저주 변이 1개 — 어떤 저주인지는 확정해야 압니다.';
+  if (op.kind === 'discoverMonth') return '고른 달의 카드 4장 중 무작위 1장이 덱에 들어옵니다.';
+  if (choiceId?.includes('~')) return '이 선택지의 결과는 확정할 때 표시된 범위 안에서 정해집니다.';
+  if (!opIsRanged(op)) return undefined;
+  if (op.kind === 'upgradeJokbo') return `무작위 족보 Lv +${op.levels ?? 1} — 자주 발동한 족보와 레벨이 높은 족보일수록 잘 나옵니다.`;
+  if (!uid) return '카드를 고르면 가능한 결과의 범위가 표시됩니다.';
+  switch (op.kind) {
+    case 'monthShift':
+      return `인쇄된 달이 ${monthList(shiftCandidates(run, uid))} 중 하나로 바뀝니다 (무작위).`;
+    case 'splitMoon':
+      return `${monthList(splitCandidates(run, uid))} 중 한 달이 두 번째 달로 추가됩니다 (무작위).`;
+    case 'enhanceCard':
+      return `두 번째 매칭 달: ${monthList(dualCandidates(run, uid))} 중 하나 (무작위).`;
+    case 'typeGraft':
+      return `${graftCandidates(run, uid).map((c) => CATEGORY_KO[c]).join('·')} 중 한 종류가 추가됩니다 (무작위).`;
+    case 'ribbonDye':
+      return '색을 고르면 그 색 세트의 칸(달) 중 하나로 바뀝니다 (칸은 무작위).';
+    default:
+      return undefined;
+  }
+}
+
 export function describeMutationChoice(id: string): { label: string; description: string; rarity: Rarity } {
   const [kind, a, b] = id.split(':');
-  const def = MUTATIONS[kind as MutationId];
+  const def = MUTATIONS[kind.replace('~', '') as MutationId];
   switch (kind) {
+    case 'monthShift~':
+      return { label: `${def.name} → ${monthList(nums(a))} 중`, description: `인쇄된 달이 ${monthList(nums(a))} 중 하나로 바뀜 (확정할 때 정해짐).`, rarity: def.rarity };
+    case 'splitMoon~':
+      return { label: `${def.name} +(${monthList(nums(a))} 중)`, description: `${monthList(nums(a))} 중 한 달을 두 번째 달로 추가 (매칭 + 점수).`, rarity: def.rarity };
+    case 'tripleMoon~':
+      return { label: `${def.name} +(${monthList(nums(a))} 중 두 달)`, description: `${monthList(nums(a))} 중 두 달을 추가해 세 달로 취급.`, rarity: def.rarity };
+    case 'ribbonDye~':
+      return {
+        label: `${def.name} → ${RIBBON_INFO[a as RibbonType].nameKo} (${monthList(nums(b))} 중)`,
+        description: `이 띠가 ${RIBBON_INFO[a as RibbonType].nameKo}의 ${monthList(nums(b))} 칸 중 하나로 바뀜 (달도 함께 바뀜).`,
+        rarity: def.rarity,
+      };
     case 'monthShift':
       return { label: `${def.name} → ${a}월`, description: `인쇄된 달을 ${a}월(${MONTH_INFO[Number(a) as Month].plantKo})로 바꿈.`, rarity: def.rarity };
     case 'splitMoon':
@@ -275,9 +390,23 @@ export function describeMutationChoice(id: string): { label: string; description
   }
 }
 
-export function parseMutationChoice(id: string): MutationInstance {
+/** Resolves a mutation choice id; ranged ids (`kind~:…`) roll with `rng` (first candidate without one). */
+export function parseMutationChoice(id: string, rng?: Rng): MutationInstance {
   const [kind, a, b] = id.split(':');
+  const pickFrom = <T,>(xs: T[]): T => (rng ? rng.pick(xs) : xs[0]);
   switch (kind) {
+    case 'monthShift~':
+      return { id: 'monthShift', month: pickFrom(nums(a)) };
+    case 'splitMoon~':
+      return { id: 'splitMoon', month: pickFrom(nums(a)) };
+    case 'tripleMoon~': {
+      const pool = nums(a);
+      const first = pickFrom(pool);
+      const rest = pool.filter((m) => m !== first);
+      return { id: 'tripleMoon', months: [first, rest.length ? pickFrom(rest) : first] };
+    }
+    case 'ribbonDye~':
+      return { id: 'ribbonDye', ribbonType: a as RibbonType, month: pickFrom(nums(b)) };
     case 'monthShift':
       return { id: 'monthShift', month: Number(a) as Month };
     case 'splitMoon':
@@ -302,24 +431,24 @@ export function mutationOptionIds(run: RunState, uid: string, rng: Rng, n = 3): 
   const months = id.scoringMonths;
   const printed = id.printedMonth ?? 1;
   const items: { item: string; weight: number; key: string }[] = [];
-  const shiftTo = mcm !== printed ? mcm : neighbor(printed, [printed]);
-  items.push({ item: `monthShift:${shiftTo}`, weight: 3, key: 'monthShift' });
-  const splitTo = !months.includes(mcm) ? mcm : neighbor(printed, months);
-  items.push({ item: `splitMoon:${splitTo}`, weight: 2, key: 'splitMoon' });
+  // Draft offers never name an exact month: they roll near the deck's most common month.
+  const near = [mcm, ...monthsAround(mcm, 1, 1)];
+  const shiftPool = near.filter((m) => m !== printed).sort((x, y) => x - y);
+  items.push({ item: `monthShift~:${(shiftPool.length ? shiftPool : monthsAround(printed, 1, 2, [printed])).join(',')}`, weight: 3, key: 'monthShift' });
+  const splitPool = near.filter((m) => !months.includes(m)).sort((x, y) => x - y);
+  const splitList = splitPool.length ? splitPool : monthsAround(printed, 1, 2, months);
+  items.push({ item: `splitMoon~:${splitList.join(',')}`, weight: 2, key: 'splitMoon' });
   if (!id.mutations.some((m) => m.id === 'tripleMoon')) {
-    const a = splitTo;
-    const b = neighbor(a, [...months, a]);
-    items.push({ item: `tripleMoon:${a},${b}`, weight: 0.6, key: 'tripleMoon' });
+    const pool = Array.from(new Set([...splitList, ...monthsAround(printed, 1, 2, months)])).sort((x, y) => x - y);
+    if (pool.length >= 2) items.push({ item: `tripleMoon~:${pool.join(',')}`, weight: 0.6, key: 'tripleMoon' });
   }
   for (const cat of ['animal', 'ribbon', 'pi'] as CardCategory[]) {
     if (!id.categories.includes(cat)) items.push({ item: `typeGraft:${cat}`, weight: 0.8, key: `typeGraft:${cat}` });
   }
   if (id.ribbon) {
-    const targets = RIBBON_SLOTS.flatMap((s) => s.months.map((m) => ({ type: s.type, month: m }))).filter(
-      (t) => !(t.type === id.ribbonType && t.month === printed),
-    );
-    const t = rng.pick(targets);
-    items.push({ item: `ribbonDye:${t.type}:${t.month}`, weight: 2.5, key: 'ribbonDye' });
+    const s = rng.pick(RIBBON_SLOTS);
+    const slots = s.months.filter((m) => !(s.type === id.ribbonType && m === printed));
+    items.push({ item: `ribbonDye~:${s.type}:${slots.join(',')}`, weight: 2.5, key: 'ribbonDye' });
   }
   if (id.level >= 4 && !id.bright) items.push({ item: 'brightAscension', weight: 1.5, key: 'brightAscension' });
   if (!id.mutations.some((m) => m.id === 'piCompression')) items.push({ item: 'piCompression', weight: 1.5, key: 'piCompression' });
@@ -339,11 +468,7 @@ function enhancementOptionIds(run: RunState, uid: string, rng: Rng, n: number, r
     if (!def.stackable && id.card.enhancements.some((x) => x.id === e)) continue;
     if (id.joker && (e === 'dualMonth' || e === 'adjacentMonth' || e === 'wildMonth')) continue;
     let item: string = e;
-    if (e === 'dualMonth') {
-      const mcm = mostCommonMonth(ctx);
-      const m = !id.scoringMonths.includes(mcm) ? mcm : neighbor(id.printedMonth ?? 1, id.scoringMonths);
-      item = `dualMonth:${m}`;
-    }
+    if (e === 'dualMonth') item = `dualMonth~:${dualCandidates(run, uid).join(',')}`;
     const w = RARITY_WEIGHT[def.rarity] + (def.rarity === 'rare' ? rarityBoost : 0);
     items.push({ item, weight: w, key: e });
   }
@@ -352,9 +477,20 @@ function enhancementOptionIds(run: RunState, uid: string, rng: Rng, n: number, r
 
 export function describeEnhancementChoice(id: string): { label: string; description: string; rarity: Rarity } {
   const [e, m] = id.split(':');
-  const def = ENHANCEMENTS[e as EnhancementId];
+  const def = ENHANCEMENTS[e.replace('~', '') as EnhancementId];
+  if (e === 'dualMonth~') return { label: `${def.name} (${monthList(nums(m))} 중)`, description: `${monthList(nums(m))} 중 한 달과도 짝을 맞춤 (매칭 전용, 확정할 때 정해짐).`, rarity: def.rarity };
   if (e === 'dualMonth' && m) return { label: `${def.name} (${m}월)`, description: `${m}월과도 짝을 맞춤 (매칭 전용).`, rarity: def.rarity };
   return { label: def.name, description: def.description, rarity: def.rarity };
+}
+
+/** Resolves an enhancement choice id (`dualMonth~:4,5,9` rolls its month with `rng`). */
+export function parseEnhancementChoice(id: string, rng?: Rng): { id: EnhancementId; month?: Month } {
+  const [e, m] = id.split(':');
+  if (e.endsWith('~')) {
+    const pool = nums(m);
+    return { id: e.slice(0, -1) as EnhancementId, month: rng ? rng.pick(pool) : pool[0] };
+  }
+  return { id: e as EnhancementId, month: m ? (Number(m) as Month) : undefined };
 }
 
 export function opChoices(run: RunState, op: PendingOperation, cardUid?: string): OperationChoice[] {
@@ -378,7 +514,7 @@ export function opChoices(run: RunState, op: PendingOperation, cardUid?: string)
     }
     case 'monthShift':
     case 'splitMoon': {
-      if (!uid) return [];
+      if (!uid || opIsRanged(op)) return [];
       const id = identityOf(runCtx(run), uid);
       return ALL_MONTHS.filter((m) => (op.kind === 'monthShift' ? m !== id.printedMonth : !id.scoringMonths.includes(m))).map((m) => ({
         id: `m${m}`,
@@ -388,6 +524,16 @@ export function opChoices(run: RunState, op: PendingOperation, cardUid?: string)
     }
     case 'ribbonDye': {
       if (!uid) return [];
+      if (opIsRanged(op)) {
+        return RIBBON_SLOTS.map((s) => {
+          const slots = ribbonSlotCandidates(run, uid, s.type);
+          return {
+            id: `ribbonDye~:${s.type}:${slots.join(',')}`,
+            label: `${RIBBON_INFO[s.type].nameKo} (${monthList(slots)} 중)`,
+            description: `${RIBBON_INFO[s.type].nameKo} 세트의 칸 중 하나로 바뀜 — 칸은 확정할 때 정해짐`,
+          };
+        });
+      }
       const id = identityOf(runCtx(run), uid);
       return RIBBON_SLOTS.flatMap((s) =>
         s.months
@@ -400,7 +546,7 @@ export function opChoices(run: RunState, op: PendingOperation, cardUid?: string)
       );
     }
     case 'typeGraft': {
-      if (!uid) return [];
+      if (!uid || opIsRanged(op)) return [];
       const id = identityOf(runCtx(run), uid);
       return (['animal', 'ribbon', 'pi'] as CardCategory[])
         .filter((c) => !id.categories.includes(c))
@@ -430,6 +576,7 @@ export function opChoices(run: RunState, op: PendingOperation, cardUid?: string)
         .map((e) => ({ id: e.id, label: e.name, description: e.description, rarity: 'rare' as Rarity }));
     }
     case 'upgradeJokbo':
+      if (opIsRanged(op)) return [];
       return ALL_JOKBO.map((j) => {
         const lv = run.jokbo[j].level;
         return {
@@ -441,7 +588,7 @@ export function opChoices(run: RunState, op: PendingOperation, cardUid?: string)
     case 'discoverMonth':
       return ALL_MONTHS.map((m) => ({ id: `m${m}`, label: `${m}월 ${MONTH_INFO[m].plantKo}`, description: `${m}월 카드 무작위 1장 추가` }));
     case 'enhanceCard':
-      if (op.enhancement === 'dualMonth' && uid) {
+      if (op.enhancement === 'dualMonth' && uid && !opIsRanged(op)) {
         const id = identityOf(runCtx(run), uid);
         return ALL_MONTHS.filter((m) => !id.scoringMonths.includes(m)).map((m) => ({
           id: `m${m}`,
@@ -457,6 +604,7 @@ export function opChoices(run: RunState, op: PendingOperation, cardUid?: string)
 
 /** Does this operation need a sub-choice after a card is picked? */
 export function opNeedsChoice(op: PendingOperation): boolean {
+  if (opIsRanged(op)) return op.kind === 'ribbonDye';
   return (
     [
       'mutateCard',
@@ -491,6 +639,12 @@ function applyOperation(run: RunState, op: PendingOperation, input: OperationInp
   const eligible = new Set(opCandidates(run, op));
   for (const u of uids) if (!eligible.has(u)) throw new Error(`Card ${u} is not eligible`);
   const uid = uids[0];
+  // rolled identity results: deterministic per seed and operation (reloading does not re-roll)
+  const roll = opRng(run, op, uid ?? 'none', 'roll');
+  const ranged = opIsRanged(op);
+  const assertChoice = () => {
+    if (!input.choiceId || !opChoices(run, op, uid).some((c) => c.id === input.choiceId)) throw new Error('Invalid choice');
+  };
 
   switch (op.kind) {
     case 'removeCard': {
@@ -526,60 +680,63 @@ function applyOperation(run: RunState, op: PendingOperation, input: OperationInp
     }
     case 'enhanceCard': {
       const enh = op.enhancement!;
-      const month = enh === 'dualMonth' ? monthFromChoice(input.choiceId, input.month) : undefined;
+      const month =
+        enh === 'dualMonth' ? (ranged ? roll.pick(dualCandidates(run, uid)) : monthFromChoice(input.choiceId, input.month)) : undefined;
       addEnhancement(card(run, uid), enh, month);
-      msgs.push(`${cardName(run, uid)}: ${ENHANCEMENTS[enh].name}`);
+      msgs.push(`${cardName(run, uid)}: ${ENHANCEMENTS[enh].name}${month ? ` (${month}월)` : ''}`);
       break;
     }
     case 'levelEnhancement': {
-      if (!input.choiceId) throw new Error('Choice required');
-      const [e, m] = input.choiceId.split(':');
-      addEnhancement(card(run, uid), e as EnhancementId, m ? (Number(m) as Month) : undefined);
-      msgs.push(`${cardName(run, uid)}: ${ENHANCEMENTS[e as EnhancementId].name}`);
+      assertChoice();
+      const e = parseEnhancementChoice(input.choiceId!, roll);
+      addEnhancement(card(run, uid), e.id, e.month);
+      msgs.push(`${cardName(run, uid)}: ${ENHANCEMENTS[e.id].name}${e.month ? ` (${e.month}월)` : ''}`);
       break;
     }
     case 'specialUpgrade': {
-      if (!input.choiceId) throw new Error('Choice required');
-      const [kind, ...rest] = input.choiceId.split(':');
+      assertChoice();
+      const [kind, ...rest] = input.choiceId!.split(':');
       const payload = rest.join(':');
       if (kind === 'enh') {
-        const [e, m] = payload.split(':');
-        addEnhancement(card(run, uid), e as EnhancementId, m ? (Number(m) as Month) : undefined);
-        msgs.push(`${cardName(run, uid)}: ${ENHANCEMENTS[e as EnhancementId].name}`);
+        const e = parseEnhancementChoice(payload, roll);
+        addEnhancement(card(run, uid), e.id, e.month);
+        msgs.push(`${cardName(run, uid)}: ${ENHANCEMENTS[e.id].name}${e.month ? ` (${e.month}월)` : ''}`);
       } else {
-        addMutation(run, card(run, uid), parseMutationChoice(payload));
-        msgs.push(`${cardName(run, uid)}: ${describeMutationChoice(payload).label}`);
+        const before = cardName(run, uid);
+        const m = parseMutationChoice(payload, roll);
+        addMutation(run, card(run, uid), m);
+        msgs.push(`${before}: ${MUTATIONS[m.id].name} → ${cardName(run, uid)}`);
       }
       break;
     }
     case 'mutateCard': {
-      if (!input.choiceId) throw new Error('Choice required');
-      const valid = opChoices(run, op, uid).some((c) => c.id === input.choiceId);
-      if (!valid) throw new Error('Invalid mutation choice');
-      addMutation(run, card(run, uid), parseMutationChoice(input.choiceId));
-      msgs.push(`${cardName(run, uid)}: ${describeMutationChoice(input.choiceId).label}`);
+      assertChoice();
+      const before = cardName(run, uid);
+      const m = parseMutationChoice(input.choiceId!, roll);
+      addMutation(run, card(run, uid), m);
+      msgs.push(`${before}: ${MUTATIONS[m.id].name} → ${cardName(run, uid)}`);
       break;
     }
     case 'monthShift': {
-      const m = monthFromChoice(input.choiceId, input.month);
+      const m = ranged ? roll.pick(shiftCandidates(run, uid)) : monthFromChoice(input.choiceId, input.month);
       addMutation(run, card(run, uid), { id: 'monthShift', month: m });
       msgs.push(`${cardName(run, uid)} → ${m}월`);
       break;
     }
     case 'splitMoon': {
-      const m = monthFromChoice(input.choiceId, input.month);
+      const m = ranged ? roll.pick(splitCandidates(run, uid)) : monthFromChoice(input.choiceId, input.month);
       addMutation(run, card(run, uid), { id: 'splitMoon', month: m });
       msgs.push(`${cardName(run, uid)} +${m}월`);
       break;
     }
     case 'ribbonDye': {
-      if (!input.choiceId) throw new Error('Choice required');
-      addMutation(run, card(run, uid), parseMutationChoice(input.choiceId));
+      assertChoice();
+      addMutation(run, card(run, uid), parseMutationChoice(input.choiceId!, roll));
       msgs.push(`${cardName(run, uid)} 염색 완료`);
       break;
     }
     case 'typeGraft': {
-      const cat = (input.category ?? input.choiceId) as CardCategory;
+      const cat = ranged ? roll.pick(graftCandidates(run, uid)) : ((input.category ?? input.choiceId) as CardCategory);
       if (!cat) throw new Error('Category required');
       addMutation(run, card(run, uid), { id: 'typeGraft', category: cat });
       msgs.push(`${cardName(run, uid)} + ${CATEGORY_KO[cat]}`);
@@ -608,7 +765,7 @@ function applyOperation(run: RunState, op: PendingOperation, input: OperationInp
       break;
     }
     case 'upgradeJokbo': {
-      const j = (input.jokboId ?? op.jokboId ?? input.choiceId) as JokboId;
+      const j = (ranged ? pickJokbo(run, roll) : (input.jokboId ?? op.jokboId ?? input.choiceId)) as JokboId;
       if (!j || !run.jokbo[j]) throw new Error('Jokbo required');
       const from = run.jokbo[j].level;
       run.jokbo[j].level += op.levels ?? 1;

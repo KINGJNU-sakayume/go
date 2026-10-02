@@ -6,6 +6,8 @@ import {
   opChoices,
   opNeedsCard,
   opNeedsChoice,
+  opHidesOutcome,
+  opRangeText,
   previewOperation,
   resolveOperation,
   type CardView,
@@ -23,7 +25,7 @@ import { CardFilterBar, applyCardFilter, type FilterKey } from './DeckViewer';
 
 function PowerLine({ v }: { v: CardView }): ReactElement {
   return (
-    <div className="text-[11px] text-stone-300">
+    <div className="text-xs text-stone-300">
       Lv.{v.level} · 파워 {v.power} · {v.scoringMonths.join('/')}월
     </div>
   );
@@ -57,6 +59,9 @@ export function OperationModal({ game }: { game: GameApi }): ReactElement | null
   };
   const after: RunState | undefined = ready ? previewOperation(run, op.id, input) : undefined;
   const afterView = after ? makeDeckViewFn(after) : undefined;
+  // rolled results (identity ranges, 도깨비 내기, 고대의 패…) are never previewed — only their range
+  const hidden = opHidesOutcome(op, choice);
+  const rangeText = opRangeText(run, op, picked[0], choice);
 
   const toggle = (uid: string) => {
     if (op.cardUid) return;
@@ -117,7 +122,15 @@ export function OperationModal({ game }: { game: GameApi }): ReactElement | null
         </div>
       )}
 
-      {after && (
+      {rangeText && (
+        <div className="mt-3 rounded-lg border border-sky-300/30 bg-black/30 p-2 text-sm">
+          <div className="font-bold text-sky-200">결과 범위</div>
+          <div className="text-stone-200">{rangeText}</div>
+          {hidden && <div className="mt-0.5 text-xs text-stone-400">정확한 결과는 확정한 뒤에 정해집니다. 원하는 결과를 고르려면 확정판(화공의 붓·장인의 염료 등)을 쓰세요.</div>}
+        </div>
+      )}
+
+      {after && !hidden && (
         <div className="mt-3 rounded-lg border border-amber-300/30 bg-black/30 p-2">
           <div className="mb-1 text-sm font-bold text-amber-200">미리보기 (전 → 후)</div>
           <div className="flex flex-wrap gap-4">

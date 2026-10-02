@@ -1,5 +1,5 @@
 import type { EnhancementId, JokboId, Month } from './primitives';
-import type { SourceRef } from './effects';
+import type { SourceKind, SourceRef } from './effects';
 import type { RunModifierKey } from './run';
 
 export type TriggerReason = 'complete' | 'increment' | 'retrigger';
@@ -42,6 +42,9 @@ export interface ScoreEntry {
     | 'globalMultAdd'
     | 'captureMult';
   value: number;
+  /** Which talisman / enhancement / evolution… contributed this entry (UI: that object reacts). */
+  sourceKind?: SourceKind;
+  sourceId?: string;
 }
 
 export interface ScoreBreakdown {
@@ -185,6 +188,9 @@ export interface ChainStep {
   breakdown?: ScoreBreakdown;
   /** Hype counter for the chain at this step (number of trigger events so far). */
   chainCount?: number;
+  /** The effect source behind this step (talisman id, enhancement id…), for in-place UI reactions. */
+  sourceKind?: SourceKind;
+  sourceId?: string;
 }
 
 export interface TriggerChain {

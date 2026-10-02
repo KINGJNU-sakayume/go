@@ -253,7 +253,16 @@ export function processEvents(
     }
     rt.chain.resolutions++;
     if (ev.announce) {
-      pushStep(ctx, { kind: 'effect', depth: ev.depth, title: ev.announce, source: ev.source.label, cardUid: ev.source.cardUid, tone: toneForSource(ev.source) });
+      pushStep(ctx, {
+        kind: 'effect',
+        depth: ev.depth,
+        title: ev.announce,
+        source: ev.source.label,
+        sourceKind: ev.source.kind,
+        sourceId: ev.source.id,
+        cardUid: ev.source.cardUid,
+        tone: toneForSource(ev.source),
+      });
     }
     const core = applyCore(ctx, ev);
     describeEvent(ctx, ev);
@@ -475,9 +484,22 @@ function applyCore(ctx: GameContext, ev: GameEvent): CoreResult {
           stage.drunk++;
           if (stage.drunk >= 3) {
             stage.drunk = 0;
-            stage.hand = ctx.rng.shuffle(stage.hand);
+            // a random hand card is soaked: discarded and replaced from the stock (no exchange used)
+            const soaked = ctx.rng.pickOrUndefined(stage.hand);
+            const fresh = stage.stock[0];
+            if (!soaked || !fresh) return { before: [{ type: 'MESSAGE', text: '취기 3! 술잔이 엎어졌지만 젖은 패는 없다' }], after: [] };
+            const slot = stage.hand.indexOf(soaked);
+            stage.hand.splice(slot, 1, fresh);
+            stage.stock.shift();
+            stage.discard.push(soaked);
             stage.handOrderSeed++;
-            return { before: [{ type: 'MESSAGE', text: '취기 3! 손패가 뒤섞였다' }], after: [] };
+            return {
+              before: [
+                { type: 'MESSAGE', text: `취기 3! ${identityOf(ctx, soaked).name}이(가) 술에 젖어 버려지고 ${identityOf(ctx, fresh).name}을(를) 받았다` },
+                { type: 'CARD_DRAWN', cardUid: fresh, reason: 'refill' },
+              ],
+              after: [],
+            };
           }
           return { before: [{ type: 'MESSAGE', text: `취기 +1 (${stage.drunk}/3)` }], after: [] };
         }
@@ -518,8 +540,8 @@ function applyCore(ctx: GameContext, ev: GameEvent): CoreResult {
       if (pi > 0 && rules.piSteal) after.push({ type: 'PI_STOLEN', amount: pi, special: ev.special });
       const coins = BALANCE.specialCoins[ev.special] ?? 0;
       if (coins > 0) after.push({ type: 'COINS_GAINED', amount: coins });
-      // 삼뻑 wins the hand outright: after its bonus the score is lifted to the line it has to reach.
-      if (ev.special === 'triplePpeok') after.push({ type: 'CUSTOM', customId: 'ppeokWin' });
+      // 삼뻑 used to win the hand outright; now it pays a share of the target (smaller on boss stages).
+      if (ev.special === 'triplePpeok') after.push({ type: 'CUSTOM', customId: 'ppeokBonus' });
       return { before, after };
     }
     case 'PPEOK': {
@@ -529,17 +551,11 @@ function applyCore(ctx: GameContext, ev: GameEvent): CoreResult {
       const special = PPEOK_SPECIAL[ev.kind];
       return { before: [], after: special ? [{ type: 'SPECIAL_CAPTURE', special, month: ev.month }] : [] };
     }
-    case 'SHAKE_DECLARED': {
-      // Real Go-Stop doubles the whole hand's score. Later scores carry the multiplier through the
-      // pipeline; the score already on the board is doubled right here, so the stage total ends ×2.
+    case 'SHAKE_DECLARED':
+      // Every score after the declaration carries the multiplier through the pipeline. The score already
+      // on the board is left alone: shaking early is worth more, waiting for a 폭탄 captures more.
       stage.shakeCount++;
-      if (stage.shakeCount > BALANCE.shakeMaxStacks || stage.score <= 0) return none;
-      const amount = Math.round(stage.score * (BALANCE.shakeMult - 1));
-      return {
-        before: [{ type: 'SCORE_ADDED', amount, label: `흔들기: 지금까지 점수 ×${BALANCE.shakeMult}`, scoreKind: 'special' }],
-        after: [],
-      };
-    }
+      return none;
     case 'PI_STOLEN':
       stage.bonusPi += ev.amount;
       return { before: [], after: [{ type: 'JOKBO_CHECK' }] };
@@ -679,7 +695,16 @@ function fmtNum(n: number): string {
 }
 
 function step(ctx: GameContext, ev: GameEvent, kind: ChainStepKind, title: string, extra: Partial<ChainStep> = {}): void {
-  pushStep(ctx, { kind, depth: ev.depth, title, source: ev.source.kind === 'core' ? undefined : ev.source.label, ...extra });
+  const sourced = ev.source.kind !== 'core';
+  pushStep(ctx, {
+    kind,
+    depth: ev.depth,
+    title,
+    source: sourced ? ev.source.label : undefined,
+    sourceKind: sourced ? ev.source.kind : undefined,
+    sourceId: sourced ? ev.source.id : undefined,
+    ...extra,
+  });
 }
 
 function describeEvent(ctx: GameContext, ev: GameEvent): void {
@@ -806,7 +831,7 @@ function describeEvent(ctx: GameContext, ev: GameEvent): void {
       step(ctx, ev, 'mult', ev.cause === 'shake' && ev.month ? `${SHAKE_TITLE.shake} ${ev.month}월` : SHAKE_TITLE[ev.cause], {
         detail: capped
           ? `흔들기는 ${BALANCE.shakeMaxStacks}번까지만 배율이 붙음 — 지금 ×${fmtNum(shakeFactor(stacks))}`
-          : `판 점수 ×${fmtNum(shakeFactor(stacks))} — 지금까지 점수도, 앞으로 얻을 점수도 (${stacks}회)`,
+          : `이제부터 얻는 점수 ×${fmtNum(shakeFactor(stacks))} (${stacks}회)`,
         tone: 'pink',
       });
       break;

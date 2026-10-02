@@ -1,6 +1,8 @@
 import type { EventChoice, EventEncounterDefinition, EventState, OutcomeStep, RunState } from '../types';
 import { deriveRng, type Rng } from '../rng/rng';
 import { getCardDef } from '../cards/definitions';
+import { JOKBO_DEFS } from '../jokbo/definitions';
+import { ALL_JOKBO } from '../types';
 import { ENHANCEMENTS } from '../cards/enhancements';
 import { allTalismans, getTalismanDef } from '../talismans/registry';
 import { rollTalisman } from '../rewards/rewards';
@@ -58,11 +60,19 @@ export const EVENTS: EventDefinition[] = [
       }
       choices.push({
         id: 'donate',
-        label: '엽전 8 시주 → 족보 하나 수련 (+1)',
-        description: '원하는 족보의 레벨을 올림.',
+        label: '엽전 8 시주 → 산신이 고른 족보 수련 (+1)',
+        description: '무작위 족보 하나의 레벨 +1 (자주 쓰는 족보일수록 잘 나옴).',
         cost: 8,
         disabled: run.coins < 8 ? '엽전 부족' : undefined,
-        steps: [interactive('upgradeJokbo', '산신당: 족보 수련', { count: 0, levels: 1, description: '수련할 족보를 고르세요.' })],
+        steps: [interactive('upgradeJokbo', '산신당: 족보 수련', { count: 0, levels: 1, description: '산신이 족보를 골라 줍니다.' })],
+      });
+      choices.push({
+        id: 'donateExact',
+        label: '엽전 14 시주 → 원하는 족보 수련 (+1)',
+        description: '고른 족보의 레벨 +1.',
+        cost: 14,
+        disabled: run.coins < 14 ? '엽전 부족' : undefined,
+        steps: [interactive('upgradeJokbo', '산신당: 족보 수련', { count: 0, levels: 1, exact: true, description: '수련할 족보를 고르세요.' })],
       });
       choices.push(LEAVE);
       return { title: '산신당', titleEn: 'Mountain Shrine', text: '이끼 낀 작은 사당. 향 연기 속에서 누군가 공물을 기다린다.', choices, shownCards: [] };
@@ -74,14 +84,40 @@ export const EVENTS: EventDefinition[] = [
     nameEn: 'Wandering Painter',
     teaser: '붓 한 번이면 카드가 다른 달이 된다.',
     tags: ['month', 'mutation'],
-    setup: () => ({
+    setup: (run) => ({
       title: '떠돌이 화공',
       titleEn: 'Wandering Painter',
       text: '"그 패, 내 붓이면 다른 달로 피어날 텐데."',
       shownCards: [],
       choices: [
-        { id: 'month', label: '달을 다시 그린다', description: '카드 한 장의 달을 원하는 달로 바꿈 (달 바꾸기).', steps: [interactive('monthShift', '화공: 달 다시 그리기')] },
-        { id: 'category', label: '종류를 덧그린다', description: '카드 한 장에 종류 하나 추가 (종류 접목).', steps: [interactive('typeGraft', '화공: 종류 덧그리기')] },
+        {
+          id: 'month',
+          label: '달을 다시 그린다 (화공 마음대로)',
+          description: '카드 한 장의 달이 인쇄된 달에서 1~2달 떨어진 달 중 하나로 바뀜 (무작위).',
+          steps: [interactive('monthShift', '화공: 달 다시 그리기')],
+        },
+        {
+          id: 'category',
+          label: '종류를 덧그린다 (화공 마음대로)',
+          description: '카드 한 장에 그 카드에 없는 종류(열끗·띠·피) 중 하나가 추가됨 (무작위).',
+          steps: [interactive('typeGraft', '화공: 종류 덧그리기')],
+        },
+        {
+          id: 'monthExact',
+          label: '엽전 10: 원하는 달로 그려 달라',
+          description: '카드 한 장의 달을 원하는 달로 바꿈.',
+          cost: 10,
+          disabled: run.coins < 10 ? '엽전 부족' : undefined,
+          steps: [interactive('monthShift', '화공: 원하는 달로', { exact: true })],
+        },
+        {
+          id: 'categoryExact',
+          label: '엽전 8: 원하는 종류를 덧그려 달라',
+          description: '카드 한 장에 원하는 종류 하나 추가.',
+          cost: 8,
+          disabled: run.coins < 8 ? '엽전 부족' : undefined,
+          steps: [interactive('typeGraft', '화공: 원하는 종류로', { exact: true })],
+        },
         { ...LEAVE, label: '거절한다' },
       ],
     }),
@@ -254,10 +290,18 @@ export const EVENTS: EventDefinition[] = [
       choices: [
         {
           id: 'split',
-          label: '띠에 두 번째 달을 꿰맨다',
-          description: '띠 한 장에 갈라진 달 (두 번째 달 추가, 매칭 + 점수).',
+          label: '띠에 두 번째 달을 꿰맨다 (장인 마음대로)',
+          description: '띠 한 장에 갈라진 달: 인쇄된 달에서 1~2달 떨어진 달 중 하나가 추가됨 (무작위, 매칭 + 점수).',
           disabled: hasCards(run, { categories: ['ribbon'] }) ? undefined : '띠 없음',
           steps: [interactive('splitMoon', '바느질: 두 번째 달', { filter: { categories: ['ribbon'] } })],
+        },
+        {
+          id: 'splitExact',
+          label: '엽전 8: 원하는 달을 꿰매 달라',
+          description: '띠 한 장에 원하는 두 번째 달 추가 (매칭 + 점수).',
+          cost: 8,
+          disabled: !hasCards(run, { categories: ['ribbon'] }) ? '띠 없음' : run.coins < 8 ? '엽전 부족' : undefined,
+          steps: [interactive('splitMoon', '바느질: 원하는 달', { filter: { categories: ['ribbon'] }, exact: true })],
         },
         {
           id: 'reinforce',
@@ -335,8 +379,11 @@ export const EVENTS: EventDefinition[] = [
         {
           id: 'drink',
           label: '한 잔 들이켠다',
-          description: '다음 스테이지 동안 전체 배율 +0.5.',
-          steps: [{ op: 'runModifier', key: 'nextStageGlobalAdd', value: 0.5, mode: 'add' }],
+          description: '다음 스테이지 동안 전체 배율 +0.5. 대신 숙취로 다음 스테이지 교환 -1.',
+          steps: [
+            { op: 'runModifier', key: 'nextStageGlobalAdd', value: 0.5, mode: 'add' },
+            { op: 'runModifier', key: 'nextStageExchangeBonus', value: -1, mode: 'add' },
+          ],
         },
         {
           id: 'pour',
@@ -354,6 +401,7 @@ export const EVENTS: EventDefinition[] = [
           disabled: run.coins < 6 ? '엽전 부족' : undefined,
           steps: [{ op: 'gamble', chance: 0.5, label: '술상 노름', win: [{ op: 'gainRandomTalisman', rarity: 'rare' }], lose: [{ op: 'message', text: '술값만 날렸다' }] }],
         },
+        { ...LEAVE, label: '술상을 지나친다' },
       ],
     }),
   },
@@ -378,6 +426,7 @@ export const EVENTS: EventDefinition[] = [
         ];
         const cage = !owned.has('birdcage') ? 'birdcage' : !owned.has('flock') ? 'flock' : undefined;
         if (cage) choices.push({ id: 'cage', label: `부적 「${getTalismanDef(cage)?.name}」`, description: getTalismanDef(cage)?.description ?? '', steps: [{ op: 'gainTalisman', talismanId: cage }] });
+        choices.push(LEAVE);
         return { title: '새떼', titleEn: 'Flock of Birds', text: '새들이 당신의 강화된 새 카드를 알아보고 내려앉는다.', choices, shownCards: [] };
       }
       return {
@@ -450,10 +499,16 @@ export const EVENTS: EventDefinition[] = [
     tags: ['economy'],
     setup: (run, rng) => {
       const t = rollTalisman(run, rng, { common: 0, uncommon: 0.4, rare: 0.5, mythic: 0.1 });
+      const secret = rng.pick(ALL_JOKBO);
       const goods: { label: string; description: string; price: number; steps: OutcomeStep[] }[] = [
         { label: '진짜 엽전 주머니', description: '엽전 15.', price: 4, steps: [{ op: 'gainCoins', amount: 15 }] },
         { label: '가짜 부적', description: '아무것도 없다. 오히려 무작위 카드에 저주.', price: 5, steps: [{ op: 'randomCurse' }] },
-        { label: '족보 비급', description: '무작위 족보 하나 Lv+2.', price: 7, steps: [{ op: 'randomRareReward' }] },
+        {
+          label: '족보 비급',
+          description: `${JOKBO_DEFS[secret].name} 족보 Lv+2.`,
+          price: 7,
+          steps: [{ op: 'upgradeJokboFixed', jokboId: secret, levels: 2 }],
+        },
       ];
       if (t) goods.push({ label: `부적 「${t.name}」`, description: t.description, price: 9, steps: [{ op: 'gainTalisman', talismanId: t.id }] });
       const picked = rng.sample(goods, 3);

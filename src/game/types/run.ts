@@ -149,6 +149,11 @@ export interface PendingOperation {
   refund?: number;
   /** Is this a removal that counts as a sacrifice (Hollow / Rebirth hooks still apply). */
   sacrifice?: boolean;
+  /**
+   * Identity operations (달 바꾸기, 갈라진 달, 두 달, 종류 접목, 띠 염색, 족보 선택) roll inside a published
+   * range by default. `exact` lets the player pick the result — the premium version.
+   */
+  exact?: boolean;
   then: OutcomeStep[];
 }
 
@@ -236,7 +241,9 @@ export type ShopServiceKind =
   | 'talisman'
   | 'jokerWorkshop'
   | 'monthDye'
+  | 'monthDyeExact'
   | 'ribbonDye'
+  | 'ribbonDyeExact'
   | 'purify'
   | 'enhancement'
   | 'addJoker';

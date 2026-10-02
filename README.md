@@ -37,19 +37,30 @@ talismans, Jokbo levels, jump to stage, force rewards, inspect the last trigger 
     counts toward the 피 Jokbo. 첫따닥 (따닥 on turn 1) also pays 엽전.
   - **뻑**: your hand card pairs with a field card, then the stock card is the same month with nothing else
     to take — all three stay stacked on the field and nothing is captured. **첫뻑 / 연뻑** pay 엽전 like
-    the table pays money; **삼뻑** (third of the stage) pays more and lifts the score to the target
-    (the real game's instant win). The fourth card of that month eats the pile: **자뻑 먹기** (bonus + 2 피).
-  - **흔들기**: holding three of a month with none on the field, press **흔들기!** (or just play a card of
-    that month) — the stage score is doubled like the real game's 판 점수 ×2: the score so far right away,
-    every later score through the multiplier. **폭탄** counts as a shake, **총통** (four of a month or all
-    five 광 in the opening hand) as two. Stacks multiply up to 3 (×8).
+    the table pays money; **삼뻑** (third of the stage) pays more plus 40% of the target (20% on boss
+    stages). It no longer wins outright. The fourth card of that month eats the pile: **자뻑 먹기**
+    (bonus + 2 피).
+  - **흔들기**: holding three of a month with none on the field, select one of them and press
+    **흔들고 내기** — a plain play does not shake. Every score *after* the declaration is ×2; the score
+    already on the board is not doubled, so shaking early versus waiting for a 폭탄 is a real decision.
+    **폭탄** counts as a shake, **총통** (four of a month or all five 광 in the opening hand) gives one stack
+    for the whole stage. Stacks multiply up to 2 (×4).
+  - **고**: every GO adds +0.5 to the multiplier (배) of later scores, like the real game's 고 points.
+  - All ten ribbons count for the 띠 Jokbo, the December (비) ribbon included.
   - Not adapted: 총통's optional instant win (stages are won on score), opponent penalties (광박/피박/멍박)
     and the last-turn exception for 피 뺏기 — there is no opponent to pay.
 - **교환 (Exchange)**: discard a hand card and draw one (2 per stage by default).
 - Jokbo score when completed, when their count goes up, or when explicitly retriggered — never
   again "just because" on later turns. Duplicated set cards can complete the same set Jokbo again.
 - Reach the target before your last turn and choose **스톱** (clear safely) or **고** (keep playing for
-  more coins and better rewards; end below the new line and you're 독박).
+  more coins, better rewards and a bigger 배; end below the new line and you're 독박).
+- **Scores are 끗 × 배**: 끗 is what adds (the Jokbo's traditional points ×100, card power, flat bonuses),
+  배 is what multiplies (Jokbo level and evolutions, talismans, then the stage's 판 배: 흔들기, 고…).
+  The scoreboard shows every score as `[끗] × [배] = +점`; the talisman behind a multiplier jolts.
+- **Identity operations roll inside a range.** Changing a card's month (±1–2), adding a second month,
+  a matching month (±2–3) or a category, re-dyeing a ribbon's slot, or 산신당's Jokbo training shows the
+  range and rolls when you confirm. Picking the exact result is the premium version (화공의 붓 14 엽전,
+  장인의 염료 13, paid event choices). Rolls are seeded, so reloading does not re-roll them.
 - Between months: pick 1 of 3 rewards, then choose a shop or an event. Bosses in March, June, September
   and December. Hover any card for a full explanation of every rule it bends.
 
@@ -61,7 +72,7 @@ talismans, Jokbo levels, jump to stage, force rewards, inspect the last trigger 
 | Effect DSL (trigger + conditions + effects) | `src/game/types/effects.ts`, `src/game/effects/*` |
 | Trigger engine (event queue, loop safety, chain log) | `src/game/engine/trigger.ts` |
 | Turn state machine, 고/스톱, exchange, 폭탄, 뻑, 흔들기 | `src/game/engine/stage.ts` |
-| Scoring pipeline `(Base×BaseMult + Power + Flat) × JokboMult × GlobalMult` | `src/game/scoring/pipeline.ts` |
+| Scoring pipeline `(Base×BaseMult + Power + Flat) × JokboMult × GlobalMult` (shown as 끗 × 배) | `src/game/scoring/pipeline.ts` |
 | Deck operations (remove/upgrade/clone/mutate/dye/graft/purify/Joker workshop) | `src/game/engine/operations.ts` |
 | Rewards, shop, run flow, saves | `src/game/rewards`, `shop`, `engine/run.ts`, `save` |
 | UI (no rule logic) | `src/ui` |
@@ -82,13 +93,13 @@ talismans, Jokbo levels, jump to stage, force rewards, inspect the last trigger 
 
 ### Balance (tuning values, not sacred numbers)
 
-Stage targets are `700 / 1,000 / 1,300 / 1,800 / 2,500 / 3,700 / 5,000 / 7,000 / 10,000 / 14,500 /
-21,000 / 32,000` (the spec's 800 → 50,000 curve, softened early after simulation). `npm run sim`
-shows the base deck clears January ~90% with a greedy bot, while a non-building bot stalls in spring;
-an engineered 33-card Cheongdan/retrigger deck scores a median ~23k in September (target 10k) and
-~32k in December even with a naive pilot. Early levels are deliberately modest; broken builds are
-supposed to be broken. All numbers live in `src/game/config/balance.ts`, `config/rules.ts` and the
-stage/talisman data.
+Stage targets are `540 / 800 / 1,250 / 1,700 / 2,300 / 2,900 / 4,000 / 5,600 / 8,500 / 13,000 /
+20,000 / 32,000`. With the greedy bot (`npm run sim`), the base deck clears January 96%, February
+70% and March 47%; a modest June build (40 cards, 청단 Lv3 with one evolution, four talismans) clears
+June 38%; an engineered 33-card Cheongdan/retrigger deck clears September 90% and December 58%.
+Early levels are deliberately modest; broken builds are supposed to be broken. All numbers live in
+`src/game/config/balance.ts`, `config/rules.ts` and the stage/talisman data. The analysis behind the
+current numbers is in [`docs/balance-patch-plan.md`](docs/balance-patch-plan.md).
 
 ## Deploying to GitHub Pages
 
@@ -97,4 +108,7 @@ stage/talisman data.
 Actions**. The build uses a relative base path, so it works at `https://<user>.github.io/<repo>/`.
 `.github/workflows/ci.yml` runs typecheck, tests and the build on other branches and pull requests.
 
-Card art is original SVG/CSS (month motifs, Korean labels) — no scans of commercial cards.
+Card art is original SVG/CSS (month motifs, Korean labels) — no scans of commercial cards. The 판화
+card theme (default; toggle **그림** in the top bar) uses the linocut prints in
+`public/assets/themes/linocut/` where they exist — January so far (`month-01.webp`). The months 1–3
+sheet (`months-01-03.webp`) is not a decodable image and needs re-exporting before it can be used.

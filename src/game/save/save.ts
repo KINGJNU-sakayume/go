@@ -62,6 +62,18 @@ const MIGRATIONS: Record<number, Migration> = {
     run.version = 2;
     return { ...file, version: 2, run };
   },
+  // v3: balance patch — 비띠 counts as 띠, identity operations roll unless `exact`
+  2: (file) => {
+    const run = file.run;
+    run.rules = { ...run.rules, rainRibbonCountsAsRibbon: true };
+    // operations already paid for under the old rules let the player pick: keep that promise
+    const picked = ['monthShift', 'splitMoon', 'typeGraft', 'ribbonDye', 'upgradeJokbo'];
+    for (const op of run.ops ?? []) {
+      if (picked.includes(op.kind) || (op.kind === 'enhanceCard' && op.enhancement === 'dualMonth')) op.exact = true;
+    }
+    run.version = 3;
+    return { ...file, version: 3, run };
+  },
 };
 
 export function migrate(file: SaveFile): SaveFile {

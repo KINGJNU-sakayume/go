@@ -1,7 +1,7 @@
 import type { GameEventPayload, JokboId, Month, Weather } from '../types';
 import { ALL_JOKBO } from '../types';
 import { registerCustomCondition, registerCustomEffect } from './customRegistry';
-import { capturedProfiles, effectiveRules, identityOf } from './context';
+import { capturedProfiles, effectiveRules, findCard, identityOf } from './context';
 import { scopeSubject, type EvalScope } from './evaluate';
 import { RANDOM_TEMP_ENHANCEMENTS } from './interpret';
 import { evaluateAllJokbo } from '../jokbo/evaluate';
@@ -44,6 +44,14 @@ registerCustomCondition('consecutiveSameMonth', (scope) => {
   const cur = stage.captureActions[idx].months;
   const prev = stage.captureActions[idx - 1].months;
   return cur.some((m) => prev.includes(m));
+});
+
+/** 깨진 거울: exactly one Jokbo type scored this turn, and it is not a count Jokbo (피·띠·열끗). */
+registerCustomCondition('onlyScoredIsSetJokbo', (scope) => {
+  const stage = scope.ctx.stage;
+  if (!stage) return false;
+  const ids = Array.from(new Set(stage.turnState.scoredJokbo));
+  return ids.length === 1 && JOKBO_DEFS[ids[0]].rule.kind !== 'count';
 });
 
 registerCustomCondition('placedFromHand', (scope) => {
@@ -111,6 +119,23 @@ registerCustomEffect('impostorAssign', (scope) => {
   ];
 });
 
+/** 짐승 발자국: one step per capture action (a pair counts once), reset by an action without an animal. */
+registerCustomEffect('beastCombo', (scope) => {
+  const ev = scope.event;
+  const stage = scope.ctx.stage;
+  if (!ev || ev.type !== 'CARD_CAPTURED' || !stage || ev.actionId === undefined) return [];
+  const action = stage.captureActions.find((a) => a.id === ev.actionId);
+  if (!action?.uids?.length) return [];
+  if (stage.counters['beast:lastAction'] === action.id) return [];
+  const animal = action.uids.some((u) => !!findCard(scope.ctx, u) && identityOf(scope.ctx, u).animal);
+  const combo = stage.counters['animalCombo'] ?? 0;
+  if (!animal && combo === 0) return [];
+  return [
+    { type: 'COUNTER_CHANGED', counter: 'beast:lastAction', value: action.id, scope: 'stage' },
+    { type: 'COUNTER_CHANGED', counter: 'animalCombo', value: animal ? combo + 1 : 0, scope: 'stage' },
+  ];
+});
+
 registerCustomEffect('enhanceDrawn', (scope) => {
   const ev = scope.event;
   if (!ev || ev.type !== 'EXCHANGE_USED' || !ev.drawnUid) return [];
@@ -143,7 +168,7 @@ registerCustomEffect('twinSwap', (scope) => {
 registerCustomEffect('plumFrost', (scope) => {
   const ev = scope.event;
   if (!ev || ev.type !== 'CARD_PLACED') return [];
-  return [{ type: 'CUSTOM', customId: 'frost', cardUid: ev.cardUid, text: `${identityOf(scope.ctx, ev.cardUid).name}: 서리 (파워 ×0.5)` }];
+  return [{ type: 'CUSTOM', customId: 'frost', cardUid: ev.cardUid, text: `${identityOf(scope.ctx, ev.cardUid).name}: 서리에 얼어붙음 (다음 턴까지 짝 불가)` }];
 });
 
 registerCustomEffect('coverFieldCard', (scope) => {
@@ -155,7 +180,7 @@ registerCustomEffect('coverFieldCard', (scope) => {
   return [{ type: 'CUSTOM', customId: 'cover', cardUid: pick, text: '꽃잎 장막이 필드 카드 한 장을 가렸다' }];
 });
 
-registerCustomEffect('swayBridge', () => [{ type: 'CUSTOM', customId: 'shuffleField', text: '다리가 흔들려 필드 자리가 바뀌었다' }]);
+registerCustomEffect('swayBridge', () => [{ type: 'CUSTOM', customId: 'bridgeDrop' }]);
 
 registerCustomEffect('changeWeather', (scope) => {
   const stage = scope.ctx.stage;

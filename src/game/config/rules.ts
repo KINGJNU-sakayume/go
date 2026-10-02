@@ -9,7 +9,7 @@ export const DEFAULT_RULES: RulesConfig = {
   jokerCount: 2,
   minDeckSize: 24,
   pointValue: 100,
-  rainRibbonCountsAsRibbon: false,
+  rainRibbonCountsAsRibbon: true,
   mayAnimalDoublePi: false,
   septemberAnimalDoublePi: false,
   jokerPiValue: 2,

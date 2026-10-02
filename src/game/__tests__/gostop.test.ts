@@ -4,6 +4,7 @@ import {
   BALANCE,
   JOKBO_DEFS,
   addCard,
+  addMutation,
   chooseTarget,
   createStage,
   deserializeRun,
@@ -11,7 +12,9 @@ import {
   newRun,
   playBomb,
   playCard,
+  pushOp,
   shakeableMonths,
+  shakeMonthOf,
   serializeRun,
 } from '../index';
 import type { RunState } from '../types';
@@ -49,7 +52,7 @@ describe('뻑', () => {
     expect(titles(t2)).not.toContain('뭉치 획득!');
   });
 
-  it('two in a row is 연뻑, the third of the stage is 삼뻑 and wins the hand', () => {
+  it('two in a row is 연뻑, the third of the stage is 삼뻑 and pays a share of the target', () => {
     const run = setupStage({
       hand: ['m01-bright', 'm02-animal', 'm03-bright', 'm05-pi-a'],
       field: ['m01-pi-a', 'm02-pi-a', 'm03-pi-a', 'm07-pi-a'],
@@ -65,14 +68,18 @@ describe('뻑', () => {
     expect(st.ppeokCount).toBe(3);
     expect(st.ppeokPiles).toHaveLength(3);
     expect(titles(t3)).toContain('삼뻑!');
-    expect(st.score).toBeGreaterThanOrEqual(st.target);
-    expect(st.phase).toBe('goStop');
+    const bonus = st.chains.flatMap((c) => c.steps).find((s) => s.title.startsWith('삼뻑 보너스'))!;
+    expect(bonus.value).toBe(Math.round(st.target * BALANCE.triplePpeokTargetFraction));
+    // no instant win any more
+    expect(st.score).toBeLessThan(st.target);
+    expect(st.phase).toBe('play');
     const paid = BALANCE.specialCoins.firstPpeok! + BALANCE.specialCoins.chainPpeok! + BALANCE.specialCoins.triplePpeok!;
     expect(t3.coins).toBe(coins + paid);
   });
 
   it('a second field card of the month makes it 따닥 instead (첫따닥 pays 엽전)', () => {
-    const run = setupStage({ hand: ['m01-bright'], field: ['m01-pi-a', 'm01-ribbon', 'm07-pi-a'], stock: ['m01-pi-b', 'm11-pi-a'] });
+    // a second hand card keeps the stage going (an empty hand would end — and maybe clear — it)
+    const run = setupStage({ hand: ['m01-bright', 'm05-pi-a'], field: ['m01-pi-a', 'm01-ribbon', 'm07-pi-a'], stock: ['m01-pi-b', 'm11-pi-a'] });
     const coins = run.coins;
     const waiting = playCard(run, uidOf(run, 'm01-bright'));
     const opt = waiting.stage!.pending!.options.find((o) => o.targetUids[0] === uidOf(run, 'm01-pi-a'))!;
@@ -93,6 +100,34 @@ describe('뻑', () => {
     expect(st.captured).toEqual(expect.arrayContaining([uidOf(run, 'm01-bright'), uidOf(run, 'm01-pi-a')]));
     expect(st.field).toContain(uidOf(run, 'm01-pi-b'));
     expect(st.ppeokCount).toBe(0);
+  });
+});
+
+describe('삼뻑 on a boss stage / 고 배', () => {
+  it('삼뻑 pays the smaller boss share of the target', () => {
+    const run = setupStage({
+      hand: ['m01-bright', 'm02-animal', 'm03-bright', 'm05-pi-a'],
+      field: ['m01-pi-a', 'm02-pi-a', 'm03-pi-a', 'm07-pi-a'],
+      stock: ['m01-pi-b', 'm02-pi-b', 'm03-pi-b', 'm11-pi-a'],
+    });
+    run.stage!.stageIndex = 5; // June boss (no turn modifiers)
+    let r = playCard(run, uidOf(run, 'm01-bright'));
+    r = playCard(r, uidOf(run, 'm02-animal'));
+    r = playCard(r, uidOf(run, 'm03-bright'));
+    const st = r.stage!;
+    const bonus = st.chains.flatMap((c) => c.steps).find((s) => s.title.startsWith('삼뻑 보너스'))!;
+    expect(bonus.value).toBe(Math.round(st.target * BALANCE.triplePpeokBossTargetFraction));
+  });
+
+  it('every 고 adds to the multiplier of later scores', () => {
+    const layout = { hand: ['m05-pi-a'], field: ['m05-pi-b'], stock: ['m11-pi-a'] };
+    const capture = (r: RunState) =>
+      r.stage!.chains.flatMap((c) => c.steps).find((s) => s.kind === 'capture' && s.cardUid === uidOf(r, 'm05-pi-a'))!.value!;
+    const plain = playCard(setupStage(layout), uidOf(setupStage(layout), 'm05-pi-a'));
+    const goRun = setupStage(layout);
+    goRun.stage!.goCount = 2;
+    const gone = playCard(goRun, uidOf(goRun, 'm05-pi-a'));
+    expect(capture(gone)).toBe(Math.round(capture(plain) * (1 + 2 * BALANCE.goMultAdd)));
   });
 });
 
@@ -122,11 +157,14 @@ describe('쪽 / 싹쓸이 / 피 뺏기', () => {
 });
 
 describe('흔들기 / 폭탄 / 총통', () => {
-  it('playing one of three same-month hand cards (none on the field) shakes: later scores ×shakeMult', () => {
+  it('declaring 흔들기 with one of three same-month hand cards (none on the field): later scores ×shakeMult', () => {
     const layout = { hand: ['m03-bright', 'm03-ribbon', 'm03-pi-a', 'm05-pi-a'], field: ['m05-pi-b', 'm07-pi-a'], stock: ['m11-pi-a', 'm08-pi-a'] };
     const run = setupStage(layout);
     expect(shakeableMonths(run)).toEqual([3]);
-    const t1 = playCard(run, uidOf(run, 'm03-pi-a'));
+    expect(shakeMonthOf(run, uidOf(run, 'm03-pi-a'))).toBe(3);
+    expect(shakeMonthOf(run, uidOf(run, 'm05-pi-a'))).toBeUndefined();
+    expect(() => playCard(run, uidOf(run, 'm05-pi-a'), undefined, { shake: true })).toThrow();
+    const t1 = playCard(run, uidOf(run, 'm03-pi-a'), undefined, { shake: true });
     expect(t1.stage!.shakeCount).toBe(1);
     expect(titles(t1)).toContain('흔들기! 3월');
     // the same 5월 capture next turn is worth exactly shakeMult times as much
@@ -137,22 +175,36 @@ describe('흔들기 / 폭탄 / 총통', () => {
     expect(capture(shaken)).toBe(capture(plain) * BALANCE.shakeMult);
   });
 
-  it('흔들기 doubles the score already on the board, like the real game\'s 판 점수 ×2', () => {
+  it('흔들기 is never automatic: a plain play of that card does not shake', () => {
+    const run = setupStage({ hand: ['m03-bright', 'm03-ribbon', 'm03-pi-a', 'm05-pi-a'], field: ['m07-pi-a'], stock: ['m11-pi-a', 'm12-doublepi'] });
+    const st = playCard(run, uidOf(run, 'm03-pi-a')).stage!;
+    expect(st.shakeCount).toBe(0);
+  });
+
+  it('흔들기 leaves the score already on the board alone (only later scores are multiplied)', () => {
     const run = setupStage({ hand: ['m03-bright', 'm03-ribbon', 'm03-pi-a', 'm05-pi-a'], field: ['m07-pi-a'], stock: ['m11-pi-a', 'm12-doublepi'] });
     run.stage!.score = 500;
-    const after = playCard(run, uidOf(run, 'm03-pi-a')); // placed, stock card placed too: nothing else scores
+    const after = playCard(run, uidOf(run, 'm03-pi-a'), undefined, { shake: true }); // placed, stock card placed too
     const st = after.stage!;
     expect(st.shakeCount).toBe(1);
-    expect(st.score).toBe(500 * BALANCE.shakeMult);
-    const step = st.chains.flatMap((c) => c.steps).find((x) => x.title.startsWith('흔들기: 지금까지 점수'))!;
-    expect(step.value).toBe(500 * (BALANCE.shakeMult - 1));
+    expect(st.score).toBe(500);
+  });
+
+  it('a declared 흔들기 survives a capture-target choice', () => {
+    const run = setupStage({ hand: ['m03-bright', 'm03-ribbon', 'm03-pi-a'], field: ['m04-pi-a', 'm02-pi-a'], stock: ['m11-pi-a'] }, (r) => {
+      r.deck.find((c) => c.defId === 'm03-pi-a')!.enhancements.push({ id: 'adjacentMonth', stacks: 1 });
+    });
+    const waiting = playCard(run, uidOf(run, 'm03-pi-a'), undefined, { shake: true });
+    expect(waiting.stage!.phase).toBe('chooseHandTarget');
+    const done = chooseTarget(waiting, waiting.stage!.pending!.options[0].id);
+    expect(done.stage!.shakeCount).toBe(1);
   });
 
   it('no extra doubling once the 흔들기 cap is reached', () => {
     const run = setupStage({ hand: ['m03-bright', 'm03-ribbon', 'm03-pi-a'], field: ['m07-pi-a'], stock: ['m11-pi-a'] });
     run.stage!.score = 500;
     run.stage!.shakeCount = BALANCE.shakeMaxStacks;
-    const st = playCard(run, uidOf(run, 'm03-pi-a')).stage!;
+    const st = playCard(run, uidOf(run, 'm03-pi-a'), undefined, { shake: true }).stage!;
     expect(st.shakeCount).toBe(BALANCE.shakeMaxStacks + 1);
     expect(st.score).toBe(500);
   });
@@ -174,14 +226,26 @@ describe('흔들기 / 폭탄 / 총통', () => {
     expect(entry.value).toBe(Math.pow(BALANCE.shakeMult, BALANCE.shakeMaxStacks));
   });
 
-  it('총통 in the opening hand gives its bonus and two 흔들기 stacks', () => {
+  it('총통 in the opening hand gives its bonus and one 흔들기 stack', () => {
     const run = newRun('HWATU-CHONG');
     run.deck = run.deck.filter((c) => c.defId.startsWith('m01-'));
     while (run.deck.length < 24) addCard(run, 'm01-pi-a', { origin: 'debug' });
     createStage(run, 0);
     const st = run.stage!;
-    expect(st.shakeCount).toBe(2);
+    expect(st.shakeCount).toBe(1);
     expect(st.chains.flatMap((c) => c.steps.map((s) => s.title))).toContain('총통!');
+  });
+
+  it('총통 counts scoring months (갈라진 달) the same way 흔들기 and 폭탄 do', () => {
+    const run = newRun('HWATU-CHONG2');
+    const keep = ['m01-bright', 'm01-ribbon'];
+    for (let m = 2; m <= 11; m++) keep.push(`m${m < 10 ? `0${m}` : m}-pi-a`, `m${m < 10 ? `0${m}` : m}-pi-b`);
+    keep.push('m12-animal', 'm12-doublepi');
+    run.deck = run.deck.filter((c) => keep.includes(c.defId));
+    for (const c of run.deck) if (!c.defId.startsWith('m01')) addMutation(run, c, { id: 'splitMoon', month: 1 });
+    createStage(run, 0);
+    // no printed month appears more than twice, but every card also counts as January
+    expect(run.stage!.chains.flatMap((c) => c.steps.map((s) => s.title))).toContain('총통!');
   });
 });
 
@@ -201,5 +265,19 @@ describe('save migration', () => {
     expect(loaded.stage!.shakeCount).toBe(0);
     // and the loaded run still plays
     expect(playCard(loaded, uidOf(run, 'm01-bright')).stage!.captured.length).toBeGreaterThan(0);
+  });
+
+  it('v2 saves count the 비 ribbon and keep picked identity operations exact', () => {
+    const run = setupStage({ hand: ['m01-bright'], field: ['m01-pi-a'], stock: ['m11-pi-a'] });
+    run.rules.rainRibbonCountsAsRibbon = false;
+    pushOp(run, { kind: 'monthShift', title: '달 염색', description: '', source: 'shop', count: 1, cancellable: true, then: [] });
+    pushOp(run, { kind: 'upgradeCard', title: '강화', description: '', source: 'shop', count: 1, cancellable: true, then: [] });
+    const file = JSON.parse(serializeRun(run));
+    file.version = 2;
+    const loaded = deserializeRun(JSON.stringify(file))!;
+    expect(loaded.version).toBe(3);
+    expect(loaded.rules.rainRibbonCountsAsRibbon).toBe(true);
+    expect(loaded.ops[0].exact).toBe(true);
+    expect(loaded.ops[1].exact).toBeUndefined();
   });
 });

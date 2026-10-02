@@ -36,7 +36,7 @@ export function CardDetail({ view }: { view: CardView }): ReactElement {
         <span className="font-bold text-amber-300">{view.power}</span>
       </div>
       {view.powerParts.length > 1 && (
-        <div className="rounded bg-black/30 p-1.5 text-[11px] text-stone-300">
+        <div className="rounded bg-black/30 p-1.5 text-xs text-stone-300">
           {view.powerParts.map((p, i) => (
             <div key={i} className="flex justify-between">
               <span>{p.label}</span>
@@ -80,7 +80,7 @@ export function CardDetail({ view }: { view: CardView }): ReactElement {
         </div>
       )}
       {view.notes.length > 0 && (
-        <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-sky-200">
+        <ul className="list-disc space-y-0.5 pl-4 text-xs text-sky-200">
           {view.notes.map((n, i) => (
             <li key={i}>{n}</li>
           ))}
