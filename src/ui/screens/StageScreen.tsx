@@ -23,6 +23,7 @@ import {
   BALANCE,
   type CaptureOption,
   type JokboId,
+  type Month,
   type PpeokPile,
 } from '../../game';
 import type { GameApi } from '../hooks/useGame';
@@ -100,6 +101,19 @@ export function StageScreen({ game, openDeck }: { game: GameApi; openDeck: () =>
         setSelected(null);
       }
     }
+  };
+
+  /** 흔들기 button: plays the selected card of that month (shaking), or first picks one for the player. */
+  const onShake = (m: Month) => {
+    if (locked) return anim.skip();
+    if (!inPlay) return;
+    const ofMonth = stage.hand.filter((u) => {
+      const id = identityOf(ctx, u);
+      return !id.joker && id.scoringMonths.includes(m);
+    });
+    if (!ofMonth.length) return;
+    if (selected && ofMonth.includes(selected)) onHandClick(selected);
+    else setSelected(ofMonth[0]);
   };
 
   const exCheck = selected && inPlay ? canExchange(run, selected) : undefined;
@@ -211,20 +225,23 @@ export function StageScreen({ game, openDeck }: { game: GameApi; openDeck: () =>
                 </span>
                 {selectedShake !== undefined && (
                   <span className="ml-2 font-bold text-pink-300">
-                    이 패를 내면 흔들기! ({selectedShake}월 · 이후 점수 ×{nextShake})
+                    이 패를 내면 흔들기! ({selectedShake}월 · 판 점수 ×{nextShake})
                   </span>
                 )}
                 {stage.drunk > 0 && <span className="ml-2 text-orange-300">취기 {stage.drunk}/3</span>}
               </div>
               <div className="flex flex-wrap gap-1">
                 {shakes.map((m) => (
-                  <span
+                  <button
                     key={`shake-${m}`}
-                    className="rounded border border-pink-400/50 bg-pink-950/50 px-1.5 py-1 text-xs font-bold text-pink-200"
-                    title={`${m}월 패가 손에 세 장 이상, 바닥에는 없습니다. ${m}월 패를 내면 자동으로 흔들어 이번 판 이후 점수가 ×${BALANCE.shakeMult} (최대 ${BALANCE.shakeMaxStacks}번).`}
+                    type="button"
+                    className="btn btn-pink text-xs"
+                    disabled={locked}
+                    title={`${m}월 패가 손에 세 장 이상, 바닥에는 없습니다. ${m}월 패를 하나 내면서 흔들어 판 점수가 ×${BALANCE.shakeMult} (지금까지 점수 포함, 최대 ${BALANCE.shakeMaxStacks}번). 그냥 ${m}월 패를 내도 자동으로 흔듭니다.`}
+                    onClick={() => onShake(m)}
                   >
-                    흔들기 대기 · {m}월
-                  </span>
+                    {selectedShake === m ? `흔들고 내기! ${m}월` : `흔들기! ${m}월`}
+                  </button>
                 ))}
                 {bombs.map((b) => (
                   <button key={b.month} type="button" className="btn btn-red text-xs" disabled={locked} onClick={() => game.act((r) => playBomb(r, b.month))}>

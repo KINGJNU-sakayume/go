@@ -182,7 +182,10 @@ const GOSTOP_RULES: [string, string][] = [
   ],
   ['자뻑 먹기', `묶인 뻑 세 장을 네 번째 패로 한꺼번에 먹음 → +${SC.ppeokEat} · 피 ${PI.ppeokEat}장`],
   ['싹쓸이', `내 차례에 바닥을 비움 → +${SC.sweep} · 피 ${PI.sweep}장`],
-  ['흔들기', `손에 같은 달 세 장, 바닥엔 없음 → 그 달 패를 내면 자동 선언, 이후 점수 ×${BALANCE.shakeMult} (최대 ${BALANCE.shakeMaxStacks}번 겹침)`],
+  [
+    '흔들기',
+    `손에 같은 달 세 장, 바닥엔 없음 → [흔들기] 버튼을 누르거나 그 달 패를 내면 선언. 판 점수 ×${BALANCE.shakeMult} (지금까지 점수 포함, 최대 ${BALANCE.shakeMaxStacks}번 겹침)`,
+  ],
   ['폭탄', `손에 같은 달 세 장 + 바닥에 한 장 → 한꺼번에 먹음 (+${SC.bomb}). 흔들기 한 번으로 치고 피 ${PI.bomb}장`],
   ['총통', `첫 손패에 같은 달 네 장(또는 광 다섯 장) → +${SC.chongtong} · 흔들기 두 번 (흔들기 + 폭탄)`],
 ];

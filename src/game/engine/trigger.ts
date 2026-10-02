@@ -529,9 +529,17 @@ function applyCore(ctx: GameContext, ev: GameEvent): CoreResult {
       const special = PPEOK_SPECIAL[ev.kind];
       return { before: [], after: special ? [{ type: 'SPECIAL_CAPTURE', special, month: ev.month }] : [] };
     }
-    case 'SHAKE_DECLARED':
+    case 'SHAKE_DECLARED': {
+      // Real Go-Stop doubles the whole hand's score. Later scores carry the multiplier through the
+      // pipeline; the score already on the board is doubled right here, so the stage total ends ×2.
       stage.shakeCount++;
-      return none;
+      if (stage.shakeCount > BALANCE.shakeMaxStacks || stage.score <= 0) return none;
+      const amount = Math.round(stage.score * (BALANCE.shakeMult - 1));
+      return {
+        before: [{ type: 'SCORE_ADDED', amount, label: `흔들기: 지금까지 점수 ×${BALANCE.shakeMult}`, scoreKind: 'special' }],
+        after: [],
+      };
+    }
     case 'PI_STOLEN':
       stage.bonusPi += ev.amount;
       return { before: [], after: [{ type: 'JOKBO_CHECK' }] };
@@ -798,7 +806,7 @@ function describeEvent(ctx: GameContext, ev: GameEvent): void {
       step(ctx, ev, 'mult', ev.cause === 'shake' && ev.month ? `${SHAKE_TITLE.shake} ${ev.month}월` : SHAKE_TITLE[ev.cause], {
         detail: capped
           ? `흔들기는 ${BALANCE.shakeMaxStacks}번까지만 배율이 붙음 — 지금 ×${fmtNum(shakeFactor(stacks))}`
-          : `이번 판 이후 점수 ×${fmtNum(shakeFactor(stacks))} (${stacks}회)`,
+          : `판 점수 ×${fmtNum(shakeFactor(stacks))} — 지금까지 점수도, 앞으로 얻을 점수도 (${stacks}회)`,
         tone: 'pink',
       });
       break;

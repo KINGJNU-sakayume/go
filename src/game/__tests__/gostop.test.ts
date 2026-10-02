@@ -137,6 +137,26 @@ describe('흔들기 / 폭탄 / 총통', () => {
     expect(capture(shaken)).toBe(capture(plain) * BALANCE.shakeMult);
   });
 
+  it('흔들기 doubles the score already on the board, like the real game\'s 판 점수 ×2', () => {
+    const run = setupStage({ hand: ['m03-bright', 'm03-ribbon', 'm03-pi-a', 'm05-pi-a'], field: ['m07-pi-a'], stock: ['m11-pi-a', 'm12-doublepi'] });
+    run.stage!.score = 500;
+    const after = playCard(run, uidOf(run, 'm03-pi-a')); // placed, stock card placed too: nothing else scores
+    const st = after.stage!;
+    expect(st.shakeCount).toBe(1);
+    expect(st.score).toBe(500 * BALANCE.shakeMult);
+    const step = st.chains.flatMap((c) => c.steps).find((x) => x.title.startsWith('흔들기: 지금까지 점수'))!;
+    expect(step.value).toBe(500 * (BALANCE.shakeMult - 1));
+  });
+
+  it('no extra doubling once the 흔들기 cap is reached', () => {
+    const run = setupStage({ hand: ['m03-bright', 'm03-ribbon', 'm03-pi-a'], field: ['m07-pi-a'], stock: ['m11-pi-a'] });
+    run.stage!.score = 500;
+    run.stage!.shakeCount = BALANCE.shakeMaxStacks;
+    const st = playCard(run, uidOf(run, 'm03-pi-a')).stage!;
+    expect(st.shakeCount).toBe(BALANCE.shakeMaxStacks + 1);
+    expect(st.score).toBe(500);
+  });
+
   it('no 흔들기 when the month is already on the field (that is a 폭탄), and 폭탄 counts as a shake', () => {
     const run = setupStage({ hand: ['m03-bright', 'm03-ribbon', 'm03-pi-a', 'm05-pi-a'], field: ['m03-pi-b', 'm07-pi-a'], stock: ['m11-pi-a', 'm08-pi-a', 'm08-pi-b'] });
     expect(shakeableMonths(run)).toEqual([]);
