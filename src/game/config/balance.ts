@@ -117,7 +117,9 @@ export const BALANCE = {
     talisman: 6,
     jokerWorkshop: 9,
     monthDye: 6,
+    monthDyeExact: 14,
     ribbonDye: 6,
+    ribbonDyeExact: 13,
     purify: 4,
     enhancement: 7,
     addJoker: 8,
@@ -129,6 +131,9 @@ export const BALANCE = {
     rare: 12,
     mythic: 18,
   } satisfies Record<Rarity, number>,
+
+  /** Range of the default (rolled) identity operations, in months away from the anchor month. */
+  monthRollRange: { shift: [1, 2], split: [1, 2], dual: [2, 3] } as Record<'shift' | 'split' | 'dual', [number, number]>,
 
   rerollPrice(rerolls: number): number {
     return 2 + rerolls;

@@ -46,7 +46,8 @@ export function jokboUpgradePreview(run: RunState, j: JokboId, levels: number): 
   return `${JOKBO_DEFS[j].name} Lv.${lv} → Lv.${lv + levels} · ×${BALANCE.jokboLevelMult(lv).toFixed(2)} → ×${BALANCE.jokboLevelMult(lv + levels).toFixed(2)}`;
 }
 
-function pickJokbo(run: RunState, rng: Rng): JokboId {
+/** A Jokbo the player actually uses is more likely (shop/reward offers, 산신당's rolled 수련). */
+export function pickJokbo(run: RunState, rng: Rng): JokboId {
   // Favour Jokbo the player actually triggers.
   return rng.weighted(
     ALL_JOKBO.map((j) => ({ item: j, weight: 1 + Math.min(6, (run.stats.jokboTriggers[j] ?? 0) * 0.5) + run.jokbo[j].level * 0.5 })),
