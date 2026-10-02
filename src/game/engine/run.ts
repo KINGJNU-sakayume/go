@@ -10,7 +10,7 @@ import { EVENTS, createEventState } from '../events/encounters';
 import { runOutcomes } from './operations';
 import { cloneRun, createStage } from './stage';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export function freshJokboProgress(): Record<JokboId, JokboProgress> {
   const out = {} as Record<JokboId, JokboProgress>;

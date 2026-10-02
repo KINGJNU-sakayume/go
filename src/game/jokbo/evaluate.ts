@@ -12,6 +12,8 @@ import { JOKBO_DEFS } from './definitions';
 
 export interface JokboEvalRules {
   rainBrightPenalty: boolean;
+  /** 피 뺏기: extra 피 value with no card behind it (counted by the 피 Jokbo only). */
+  bonusPi?: number;
 }
 
 function canFillSlot(p: ScoringProfile, slot: SlotSpec, jokboId: JokboId, slotIndex: number): boolean {
@@ -160,8 +162,9 @@ function evaluateSet(
 function evaluateCount(
   rule: Extract<JokboRule, { kind: 'count' }>,
   profiles: ScoringProfile[],
+  rules: JokboEvalRules,
 ): JokboEvaluation {
-  let value = 0;
+  let value = rule.measure === 'pi' ? Math.max(0, rules.bonusPi ?? 0) : 0;
   const members: string[] = [];
   for (const p of profiles) {
     if (rule.measure === 'animal' && p.animal) {
@@ -283,7 +286,7 @@ export function evaluateJokbo(
     case 'set':
       return evaluateSet(def.id, rule, profiles, triggerUid);
     case 'count':
-      return evaluateCount(rule, profiles);
+      return evaluateCount(rule, profiles, rules);
     case 'gwang':
       return evaluateGwang(rule, profiles, rules);
     case 'fullMonth':

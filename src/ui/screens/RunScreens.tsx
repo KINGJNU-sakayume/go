@@ -179,7 +179,7 @@ export function EventScreen({ game, openDeck }: { game: GameApi; openDeck: () =>
     <Shell game={game} openDeck={openDeck}>
       <div className="panel p-5">
         <div className="text-3xl font-black text-amber-300" style={{ fontFamily: 'var(--font-serif)' }}>
-          {ev.title} <span className="text-base text-stone-400">{ev.titleEn}</span>
+          {ev.title}
         </div>
         <div className="mt-2 text-stone-200">{ev.text}</div>
         {ev.shownCards.length > 0 && (
@@ -252,8 +252,8 @@ export function GameOverScreen({ game, openDeck }: { game: GameApi; openDeck: ()
     ['최고 레벨 카드', topCard ? `${view(topCard.uid).name} Lv.${topCard.level}` : '-'],
     ['획득한 부적', s.talismansObtained.length],
     ['쓰러뜨린 보스', s.bossesDefeated],
-    ['GO 선언', `${s.goDecisions}회 (독박 ${s.goBusts})`],
-    ['과열 (OVERFLOW)', s.overflowCount],
+    ['고 선언', `${s.goDecisions}회 (독박 ${s.goBusts})`],
+    ['과열 (무한 연쇄 차단)', s.overflowCount],
   ];
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-3 p-3">
@@ -350,7 +350,7 @@ export function TitleScreen({ game }: { game: GameApi }): ReactElement {
           )}
         </div>
         <div className="mt-6 text-left text-xs text-stone-500">
-          <b className="text-stone-300">조작</b>: 손패를 눌러 고르고 한 번 더 누르면 냅니다. 빛나는 필드 카드를 누르면 그 카드를 가져갑니다. 카드에 마우스를 올리면 모든 규칙이 설명됩니다. 교환으로 손패를 바꾸고, 목표를 넘으면 GO/STOP을 고르세요.
+          <b className="text-stone-300">조작</b>: 손패를 눌러 고르고 한 번 더 누르면 냅니다. 빛나는 필드 카드를 누르면 그 카드를 가져갑니다. 카드에 마우스를 올리면 모든 규칙이 설명됩니다. 교환으로 손패를 바꾸고, 목표를 넘으면 고/스톱을 고르세요.
         </div>
       </div>
     </div>

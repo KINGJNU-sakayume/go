@@ -18,7 +18,7 @@ export function onCardLevelChange(run: RunState, card: CardInstance, from: numbe
       pushOp(run, {
         kind: 'levelEnhancement',
         title: `${name} Lv.${lv} 달성`,
-        description: '이 카드에 붙일 강화(인챈트)를 하나 고르세요.',
+        description: '이 카드에 붙일 강화를 하나 고르세요.',
         source: 'levelUp',
         count: 1,
         cardUid: card.uid,

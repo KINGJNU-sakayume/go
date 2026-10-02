@@ -47,7 +47,22 @@ export function defaultStorage(): StorageLike {
 type Migration = (file: SaveFile) => SaveFile;
 
 /** version → migration to version+1. Add entries here when RunState changes shape. */
-const MIGRATIONS: Record<number, Migration> = {};
+const MIGRATIONS: Record<number, Migration> = {
+  // v2: 뻑 / 흔들기 / 피 뺏기 (new rule switches and stage state)
+  1: (file) => {
+    const run = file.run;
+    run.rules = { ...run.rules, ppeok: run.rules.ppeok ?? true, shake: run.rules.shake ?? true, piSteal: run.rules.piSteal ?? true };
+    const stage = run.stage;
+    if (stage) {
+      stage.ppeokPiles ??= [];
+      stage.ppeokCount ??= 0;
+      stage.bonusPi ??= 0;
+      stage.shakeCount ??= 0;
+    }
+    run.version = 2;
+    return { ...file, version: 2, run };
+  },
+};
 
 export function migrate(file: SaveFile): SaveFile {
   let current = file;

@@ -427,7 +427,7 @@ export function opChoices(run: RunState, op: PendingOperation, cardUid?: string)
       const owned = new Set(run.jokbo[jid].evolutions);
       return evolutionsFor(jid)
         .filter((e) => !owned.has(e.id))
-        .map((e) => ({ id: e.id, label: `${e.name} (${e.nameEn})`, description: e.description, rarity: 'rare' as Rarity }));
+        .map((e) => ({ id: e.id, label: e.name, description: e.description, rarity: 'rare' as Rarity }));
     }
     case 'upgradeJokbo':
       return ALL_JOKBO.map((j) => {

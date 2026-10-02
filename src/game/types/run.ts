@@ -33,6 +33,12 @@ export interface RulesConfig {
   /** Upcoming stock cards always visible. */
   basePreview: number;
   goEnabled: boolean;
+  /** 뻑: hand capture + same-month stock card leaves all three on the field. */
+  ppeok: boolean;
+  /** 흔들기: playing a card while holding three of its month (none on the field) multiplies later scores. */
+  shake: boolean;
+  /** 피 뺏기: 쪽 / 따닥 / 싹쓸이 / 폭탄 / 자뻑 add bonus 피 toward the 피 Jokbo. */
+  piSteal: boolean;
   maxChainResolutions: number;
   maxChainDepth: number;
   loopRepeatLimit: number;

@@ -52,7 +52,7 @@ export function CardDetail({ view }: { view: CardView }): ReactElement {
       )}
       {view.enhancements.length > 0 && (
         <div className="space-y-1">
-          <div className="text-xs font-bold text-stone-400">강화 (인챈트)</div>
+          <div className="text-xs font-bold text-stone-400">강화</div>
           {view.enhancements.map((e, i) => (
             <div key={i} className="text-xs">
               <span className="font-bold" style={{ color: ENHANCEMENTS[e.id].color === '#475569' ? '#94a3b8' : ENHANCEMENTS[e.id].color }}>

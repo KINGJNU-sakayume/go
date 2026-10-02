@@ -6,7 +6,10 @@ import type {
   GameEvent,
   GameEventPayload,
   JokboId,
+  PpeokKind,
+  ShakeCause,
   SourceRef,
+  SpecialCaptureKind,
   StageState,
   TriggerChain,
 } from '../types';
@@ -19,6 +22,7 @@ import {
   findCard,
   identityOf,
   invalidate,
+  jokboEvalRules,
   mostCommonMonth,
   type ChainRuntime,
   type GameContext,
@@ -30,7 +34,7 @@ import { CUSTOM_CORE } from './customCore';
 import { evaluateAllJokbo } from '../jokbo/evaluate';
 import { JOKBO_DEFS, RIBBON_SET_IDS } from '../jokbo/definitions';
 import { ENHANCEMENTS } from '../cards/enhancements';
-import { computeBonusScore, computeCaptureScore, computeJokboScore } from '../scoring/pipeline';
+import { computeBonusScore, computeCaptureScore, computeJokboScore, shakeFactor } from '../scoring/pipeline';
 import { onCardLevelChange } from './levelups';
 
 export const CORE_SOURCE: SourceRef = { kind: 'core', id: 'core', label: '규칙' };
@@ -207,7 +211,7 @@ function triggerOverflow(ctx: GameContext, depth: number): void {
   pushStep(ctx, {
     kind: 'overflow',
     depth,
-    title: '과열! / OVERFLOW',
+    title: '과열!',
     detail: '반복 루프 감지 — 이 갈래를 멈추고 지금까지의 점수는 그대로 지급',
     tone: 'red',
   });
@@ -344,8 +348,7 @@ function applyCore(ctx: GameContext, ev: GameEvent): CoreResult {
       };
     }
     case 'JOKBO_CHECK': {
-      const rules = effectiveRules(ctx);
-      const evals = evaluateAllJokbo(capturedProfiles(ctx), { rainBrightPenalty: rules.rainBrightPenalty }, ev.triggerCardUid);
+      const evals = evaluateAllJokbo(capturedProfiles(ctx), jokboEvalRules(ctx), ev.triggerCardUid);
       const out: GameEventPayload[] = [];
       for (const id of ALL_JOKBO) {
         const e = evals[id];
@@ -427,7 +430,7 @@ function applyCore(ctx: GameContext, ev: GameEvent): CoreResult {
           {
             type: 'SCORE_ADDED',
             amount: breakdown.total,
-            label: ev.reason === 'retrigger' ? `${def.shout} AGAIN` : (ev.tierLabel ?? def.shout),
+            label: ev.reason === 'retrigger' ? `${def.shout} 한 번 더!` : (ev.tierLabel ?? def.shout),
             scoreKind: 'jokbo',
             breakdown,
             jokboId: ev.jokboId,
@@ -506,12 +509,32 @@ function applyCore(ctx: GameContext, ev: GameEvent): CoreResult {
       };
     }
     case 'SPECIAL_CAPTURE': {
+      const rules = effectiveRules(ctx);
       const base = BALANCE.specialCapture[ev.special] * Math.max(1, ev.count ?? 1);
-      return {
-        before: [{ type: 'BONUS_SCORE', base, label: SPECIAL_LABEL[ev.special], applyGlobal: true, special: ev.special }],
-        after: [],
-      };
+      const before: GameEventPayload[] = [];
+      const after: GameEventPayload[] = [];
+      if (base > 0) before.push({ type: 'BONUS_SCORE', base, label: SPECIAL_LABEL[ev.special], applyGlobal: true, special: ev.special });
+      const pi = BALANCE.specialPi[ev.special] ?? 0;
+      if (pi > 0 && rules.piSteal) after.push({ type: 'PI_STOLEN', amount: pi, special: ev.special });
+      const coins = BALANCE.specialCoins[ev.special] ?? 0;
+      if (coins > 0) after.push({ type: 'COINS_GAINED', amount: coins });
+      // 삼뻑 wins the hand outright: after its bonus the score is lifted to the line it has to reach.
+      if (ev.special === 'triplePpeok') after.push({ type: 'CUSTOM', customId: 'ppeokWin' });
+      return { before, after };
     }
+    case 'PPEOK': {
+      stage.ppeokPiles.push({ month: ev.month, uids: [...ev.cardUids], turn: stage.turn });
+      stage.ppeokCount++;
+      stage.lastPpeokTurn = stage.turn;
+      const special = PPEOK_SPECIAL[ev.kind];
+      return { before: [], after: special ? [{ type: 'SPECIAL_CAPTURE', special, month: ev.month }] : [] };
+    }
+    case 'SHAKE_DECLARED':
+      stage.shakeCount++;
+      return none;
+    case 'PI_STOLEN':
+      stage.bonusPi += ev.amount;
+      return { before: [], after: [{ type: 'JOKBO_CHECK' }] };
     case 'CARD_UPGRADED': {
       if (ev.scope === 'run') {
         const card = findCard(ctx, ev.cardUid);
@@ -605,13 +628,31 @@ function applyCore(ctx: GameContext, ev: GameEvent): CoreResult {
   }
 }
 
-export const SPECIAL_LABEL: Record<string, string> = {
+export const SPECIAL_LABEL: Record<SpecialCaptureKind, string> = {
   jjok: '쪽!',
   ttadak: '따닥!',
+  firstTtadak: '첫따닥!',
   sweep: '싹쓸이!',
   stack: '뭉치 획득!',
+  ppeokEat: '자뻑 먹기!',
+  firstPpeok: '첫뻑!',
+  chainPpeok: '연뻑!',
+  triplePpeok: '삼뻑!',
   bomb: '폭탄!',
   chongtong: '총통!',
+};
+
+const PPEOK_SPECIAL: Record<PpeokKind, SpecialCaptureKind | undefined> = {
+  normal: undefined,
+  first: 'firstPpeok',
+  chain: 'chainPpeok',
+  triple: 'triplePpeok',
+};
+
+const SHAKE_TITLE: Record<ShakeCause, string> = {
+  shake: '흔들기!',
+  bomb: '폭탄 = 흔들기',
+  chongtong: '총통 = 흔들기',
 };
 
 // ------------------------------------------------------------------ visualization
@@ -623,6 +664,10 @@ function cardName(ctx: GameContext, uid: string | undefined): string {
 
 function fmtMult(n: number): string {
   return `×${n.toFixed(2)}`;
+}
+
+function fmtNum(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(2);
 }
 
 function step(ctx: GameContext, ev: GameEvent, kind: ChainStepKind, title: string, extra: Partial<ChainStep> = {}): void {
@@ -652,7 +697,7 @@ function describeEvent(ctx: GameContext, ev: GameEvent): void {
       break;
     case 'JOKBO_COMPLETED': {
       const def = JOKBO_DEFS[ev.jokboId];
-      step(ctx, ev, 'jokbo', `${ev.tierLabel ? ev.tierLabel.toUpperCase() : def.shout} COMPLETE`, {
+      step(ctx, ev, 'jokbo', `${ev.tierLabel ?? def.shout} 완성!`, {
         jokboId: ev.jokboId,
         detail: `${def.name} ${ev.points}점${ev.sets > 1 ? ` · ${ev.sets}세트` : ''}`,
         cardUid: ev.triggerCardUid,
@@ -672,7 +717,7 @@ function describeEvent(ctx: GameContext, ev: GameEvent): void {
       break;
     }
     case 'RETRIGGER_REQUESTED':
-      step(ctx, ev, 'retrigger', `RETRIGGER ${JOKBO_DEFS[ev.jokboId].shout}`, { jokboId: ev.jokboId, tone: 'purple' });
+      step(ctx, ev, 'retrigger', `${JOKBO_DEFS[ev.jokboId].shout} 재발동`, { jokboId: ev.jokboId, tone: 'purple' });
       break;
     case 'SCORE_ADDED': {
       const b = ev.breakdown;
@@ -733,6 +778,33 @@ function describeEvent(ctx: GameContext, ev: GameEvent): void {
       break;
     case 'CUSTOM':
       if (ev.text && ev.customId !== 'setWeather') step(ctx, ev, 'info', ev.text, { cardUid: ev.cardUid, tone: 'gray' });
+      break;
+    case 'SPECIAL_CAPTURE':
+      // specials with a score show up through their SCORE_ADDED; the 엽전-only ones get their own shout
+      if (BALANCE.specialCapture[ev.special] <= 0) step(ctx, ev, 'special', SPECIAL_LABEL[ev.special], { tone: 'gold' });
+      break;
+    case 'PPEOK': {
+      const stage = ctx.stage!;
+      step(ctx, ev, 'special', '뻑!', {
+        detail: `${ev.month}월 세 장이 바닥에 묶였다 — 네 번째 ${ev.month}월 패로 한꺼번에 먹을 수 있음 (이번 판 ${stage.ppeokCount}뻑)`,
+        cardUid: ev.cardUids[ev.cardUids.length - 1],
+        tone: 'red',
+      });
+      break;
+    }
+    case 'SHAKE_DECLARED': {
+      const stacks = ctx.stage!.shakeCount;
+      const capped = stacks > BALANCE.shakeMaxStacks;
+      step(ctx, ev, 'mult', ev.cause === 'shake' && ev.month ? `${SHAKE_TITLE.shake} ${ev.month}월` : SHAKE_TITLE[ev.cause], {
+        detail: capped
+          ? `흔들기는 ${BALANCE.shakeMaxStacks}번까지만 배율이 붙음 — 지금 ×${fmtNum(shakeFactor(stacks))}`
+          : `이번 판 이후 점수 ×${fmtNum(shakeFactor(stacks))} (${stacks}회)`,
+        tone: 'pink',
+      });
+      break;
+    }
+    case 'PI_STOLEN':
+      step(ctx, ev, 'special', `피 +${ev.amount} 뺏기`, { detail: `피 족보에 더해짐 (뺏은 피 ${ctx.stage!.bonusPi})`, tone: 'green' });
       break;
     default:
       break;

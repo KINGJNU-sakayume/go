@@ -184,7 +184,7 @@ export function readScalar(scope: EvalScope, scalar: ScalarExpr['scalar'], arg?:
     case 'animalsCaptured':
       return capturedIdentities(ctx).filter((i) => i.animal).length;
     case 'piValueCaptured':
-      return capturedIdentities(ctx).reduce((s, i) => s + i.piValue, 0);
+      return capturedIdentities(ctx).reduce((s, i) => s + i.piValue, 0) + (stage?.bonusPi ?? 0);
     case 'piCardsCaptured':
       return capturedIdentities(ctx).filter((i) => i.piValue > 0).length;
     case 'capturedCount':

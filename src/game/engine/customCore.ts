@@ -29,6 +29,12 @@ export const CUSTOM_CORE: Record<string, (ctx: GameContext, ev: CustomEvent) => 
     ctx.stage.field = ctx.rng.shuffle(ctx.stage.field);
     return [];
   },
+  ppeokWin(ctx) {
+    const stage = ctx.stage;
+    if (!stage) return [];
+    const missing = Math.max(stage.target, stage.goLine ?? 0) - stage.score;
+    return missing > 0 ? [{ type: 'SCORE_ADDED', amount: missing, label: '삼뻑 승리 — 목표 달성', scoreKind: 'special' }] : [];
+  },
   setWeather(ctx, ev) {
     if (!ctx.stage || !ev.text) return [];
     ctx.stage.weather = ev.text as Weather;

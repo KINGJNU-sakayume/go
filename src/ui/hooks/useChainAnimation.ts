@@ -75,7 +75,12 @@ export function useChainAnimation(run: RunState | null, speed: AnimSpeed): Chain
 
   const skip = useCallback(() => {
     setQueue((q) => {
-      if (q.length) setShown((s) => [...s, ...q].slice(-80));
+      // the head of the queue is already on screen (and in `shown`) — don't add it twice
+      if (q.length)
+        setShown((s) => {
+          const has = new Set(s.map((a) => `${a.chainId}:${a.step.id}`));
+          return [...s, ...q.filter((a) => !has.has(`${a.chainId}:${a.step.id}`))].slice(-80);
+        });
       return [];
     });
   }, []);

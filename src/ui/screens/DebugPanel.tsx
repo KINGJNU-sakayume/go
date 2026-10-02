@@ -34,20 +34,20 @@ export function DebugPanel({ game }: { game: GameApi }): ReactElement {
   if (!open)
     return (
       <button type="button" className="fixed bottom-2 left-2 z-[90] rounded bg-fuchsia-700 px-2 py-1 text-xs font-bold" onClick={() => setOpen(true)}>
-        DEBUG
+        디버그
       </button>
     );
   const lastChain = run?.stage?.chains[run.stage.chains.length - 1];
   return (
     <div className="fixed bottom-2 left-2 z-[90] max-h-[80vh] w-80 space-y-1.5 overflow-y-auto rounded-lg border border-fuchsia-500 bg-stone-950/95 p-2 text-xs shadow-2xl scrollbar-thin">
       <div className="flex justify-between font-black text-fuchsia-300">
-        DEBUG
+        디버그
         <button type="button" onClick={() => setOpen(false)}>
           ✕
         </button>
       </div>
       <div className="flex gap-1">
-        <input className="flex-1 rounded bg-black px-1" placeholder="seed" value={seed} onChange={(e) => setSeed(e.target.value)} />
+        <input className="flex-1 rounded bg-black px-1" placeholder="시드" value={seed} onChange={(e) => setSeed(e.target.value)} />
         <button type="button" className="btn btn-dark py-0.5 text-xs" onClick={() => game.startNew(seed || undefined)}>
           새 런
         </button>
@@ -158,7 +158,7 @@ export function DebugPanel({ game }: { game: GameApi }): ReactElement {
           {lastChain && (
             <details>
               <summary className="cursor-pointer text-stone-300">
-                마지막 연쇄: {lastChain.title} ({lastChain.steps.length} steps, {lastChain.resolutions} res)
+                마지막 연쇄: {lastChain.title} ({lastChain.steps.length}단계, 처리 {lastChain.resolutions}회)
               </summary>
               <pre className="max-h-48 overflow-auto whitespace-pre-wrap text-[10px] text-stone-400">{JSON.stringify(lastChain.steps.map((s) => [s.depth, s.kind, s.title, s.value]), null, 0)}</pre>
             </details>

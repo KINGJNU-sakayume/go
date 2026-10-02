@@ -38,6 +38,12 @@ export function setupStage(
   stage.chains = [];
   stage.phase = 'play';
   stage.turn = 1;
+  // the opening deal of newRun may have rolled 총통 / jokers — start every layout from a clean slate
+  stage.ppeokPiles = [];
+  stage.ppeokCount = 0;
+  stage.lastPpeokTurn = undefined;
+  stage.bonusPi = 0;
+  stage.shakeCount = 0;
   return run;
 }
 

@@ -5,8 +5,8 @@ A single-player Hwatu (화투) roguelike deckbuilder for the browser. You start 
 12-month run until one capture sets off a chain like:
 
 ```
-CHEONGDAN COMPLETE → ECHO! → RETRIGGER CHEONGDAN → 끝없는 푸름 → RETRIGGER → RIBBONS COMPLETE
-→ 청파 → 푸른 물결 → FULL MONTH ×2 → 뭉치 획득!      +34,236
+청단 완성! → 메아리! → 청단 재발동 → 끝없는 푸름 → 재발동 → 띠 완성!
+→ 청파 → 푸른 물결 → 한 달 모음 ×2 → 뭉치 획득!      +34,236
 ```
 
 Stack: Vite · React 19 · TypeScript · Tailwind CSS 4 · Vitest. No backend; saves go to `localStorage`.
@@ -32,10 +32,22 @@ talismans, Jokbo levels, jump to stage, force rewards, inspect the last trigger 
 - Click a hand card to select it (matching field cards glow), click again to play, or click a glowing
   field card to choose exactly what you take. Three of a month on the field are swept together;
   three of a month in hand plus one on the field enables **폭탄 (bomb)**.
+- Go-Stop special plays (in-game cheat sheet: *고스톱 특수 규칙* panel):
+  - **쪽 / 따닥 / 싹쓸이** score a bonus and **steal 피** (피 뺏기): stolen 피 has no card behind it but
+    counts toward the 피 Jokbo. 첫따닥 (따닥 on turn 1) also pays 엽전.
+  - **뻑**: your hand card pairs with a field card, then the stock card is the same month with nothing else
+    to take — all three stay stacked on the field and nothing is captured. **첫뻑 / 연뻑** pay 엽전 like
+    the table pays money; **삼뻑** (third of the stage) pays more and lifts the score to the target
+    (the real game's instant win). The fourth card of that month eats the pile: **자뻑 먹기** (bonus + 2 피).
+  - **흔들기**: playing a card while holding three of its month (none on the field) shakes automatically —
+    every later score this stage ×2. **폭탄** counts as a shake, **총통** (four of a month or all five 광 in
+    the opening hand) as two. Stacks multiply up to 3 (×8).
+  - Not adapted: 총통's optional instant win (stages are won on score), opponent penalties (광박/피박/멍박)
+    and the last-turn exception for 피 뺏기 — there is no opponent to pay.
 - **교환 (Exchange)**: discard a hand card and draw one (2 per stage by default).
 - Jokbo score when completed, when their count goes up, or when explicitly retriggered — never
   again "just because" on later turns. Duplicated set cards can complete the same set Jokbo again.
-- Reach the target before your last turn and choose **STOP** (clear safely) or **GO** (keep playing for
+- Reach the target before your last turn and choose **스톱** (clear safely) or **고** (keep playing for
   more coins and better rewards; end below the new line and you're 독박).
 - Between months: pick 1 of 3 rewards, then choose a shop or an event. Bosses in March, June, September
   and December. Hover any card for a full explanation of every rule it bends.
@@ -47,7 +59,7 @@ talismans, Jokbo levels, jump to stage, force rewards, inspect the last trigger 
 | Card / Jokbo / talisman / stage / event data | `src/game/cards`, `jokbo`, `talismans`, `stages`, `events` |
 | Effect DSL (trigger + conditions + effects) | `src/game/types/effects.ts`, `src/game/effects/*` |
 | Trigger engine (event queue, loop safety, chain log) | `src/game/engine/trigger.ts` |
-| Turn state machine, GO/STOP, exchange, bomb | `src/game/engine/stage.ts` |
+| Turn state machine, 고/스톱, exchange, 폭탄, 뻑, 흔들기 | `src/game/engine/stage.ts` |
 | Scoring pipeline `(Base×BaseMult + Power + Flat) × JokboMult × GlobalMult` | `src/game/scoring/pipeline.ts` |
 | Deck operations (remove/upgrade/clone/mutate/dye/graft/purify/Joker workshop) | `src/game/engine/operations.ts` |
 | Rewards, shop, run flow, saves | `src/game/rewards`, `shop`, `engine/run.ts`, `save` |
@@ -60,7 +72,7 @@ talismans, Jokbo levels, jump to stage, force rewards, inspect the last trigger 
   Bespoke logic is referenced by id (`{ kind: 'custom', id }`). There are no talisman slots.
 - **Trigger engine**: effects only return new events; core rules apply state. Events resolve
   depth-first so the chain reads cause → effect. Safety: 240 resolutions per chain, depth 48, and a
-  per-signature repeat cap; a true loop stops that branch with **과열! / OVERFLOW** and keeps the score.
+  per-signature repeat cap; a true loop stops that branch with **과열!** and keeps the score.
 - **Determinism**: one seed (`HWATU-XXXXXX`) derives independent RNG streams per stage, shop, reward,
   event and operation, so the same seed and choices reproduce the run. `Math.random` is never used for
   game logic (only to mint a new seed).

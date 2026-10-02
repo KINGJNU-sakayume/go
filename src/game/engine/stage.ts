@@ -4,11 +4,12 @@ import type {
   JokboId,
   JokboLedgerEntry,
   Month,
+  PpeokKind,
   RunState,
   StageCoinBreakdown,
   StageState,
 } from '../types';
-import { ALL_JOKBO } from '../types';
+import { ALL_JOKBO, ALL_MONTHS } from '../types';
 import { BALANCE } from '../config/balance';
 import { Rng, deriveRng } from '../rng/rng';
 import { STAGES } from '../stages/definitions';
@@ -97,6 +98,141 @@ function uncoverMatching(ctx: GameContext, uid: string): GameEventPayload[] {
   return out;
 }
 
+// ------------------------------------------------------------------ Go-Stop specials
+
+/**
+ * 뻑 piles fully contained in `uids` (a capture just took them) are removed; returns how many.
+ * Piles that lost a card some other way are dropped silently.
+ */
+function takePpeokPiles(stage: StageState, uids: string[]): number {
+  let eaten = 0;
+  stage.ppeokPiles = stage.ppeokPiles.filter((p) => {
+    if (p.uids.every((u) => uids.includes(u))) {
+      eaten++;
+      return false;
+    }
+    return p.uids.every((u) => stage.field.includes(u));
+  });
+  return eaten;
+}
+
+/** Stack / bomb capture: eating a 뻑 pile is 자뻑 먹기, otherwise a plain 뭉치 획득. */
+function stackSpecials(stage: StageState, targetUids: string[], month: Month | undefined, plainStack: boolean): GameEventPayload[] {
+  const eaten = takePpeokPiles(stage, targetUids);
+  if (eaten > 0) return [{ type: 'SPECIAL_CAPTURE', special: 'ppeokEat', month, count: eaten }];
+  return plainStack ? [{ type: 'SPECIAL_CAPTURE', special: 'stack', month, count: 1 }] : [];
+}
+
+/** Months the hand could 흔들기 right now: three or more of a month in hand and none of it on the field. */
+function shakeMonthsIn(ctx: GameContext): Month[] {
+  const stage = ctx.stage!;
+  if (!effectiveRules(ctx).shake) return [];
+  const out: Month[] = [];
+  for (const m of ALL_MONTHS) {
+    const inHand = stage.hand.filter((u) => {
+      const id = identityOf(ctx, u);
+      return !id.joker && id.scoringMonths.includes(m);
+    }).length;
+    if (inHand < 3) continue;
+    if (stage.field.some((u) => identityOf(ctx, u).scoringMonths.includes(m))) continue;
+    out.push(m);
+  }
+  return out;
+}
+
+export function shakeableMonths(run: RunState): Month[] {
+  if (!run.stage || run.stage.phase !== 'play') return [];
+  return shakeMonthsIn(stageContext(run));
+}
+
+/** The month a hand card would 흔들기 if played now (it must belong to a shakeable month). */
+function shakeMonthFor(ctx: GameContext, uid: string): Month | undefined {
+  const id = identityOf(ctx, uid);
+  if (id.joker) return undefined;
+  const months = shakeMonthsIn(ctx);
+  return id.scoringMonths.find((m) => months.includes(m));
+}
+
+interface PpeokPlan {
+  /** Jokers revealed (and taken as service cards) before the stock card that makes the 뻑. */
+  jokers: string[];
+  stockUid: string;
+  month: Month;
+}
+
+/**
+ * 뻑: the hand card pairs with one field card, then the stock card turns out to be the same month with
+ * nothing else to take — all three stay stacked on the field. Decided before the hand capture resolves,
+ * because in the real game both cards land before anything is collected.
+ */
+function planPpeok(ctx: GameContext, uid: string, option: CaptureOption): PpeokPlan | undefined {
+  const stage = ctx.stage!;
+  if (option.kind !== 'single' || !effectiveRules(ctx).ppeok) return undefined;
+  const jokers: string[] = [];
+  let i = 0;
+  for (; i < stage.stock.length; i++) {
+    const id = identityOf(ctx, stage.stock[i]);
+    if (!id.joker) break;
+    // a universal Joker captures from the field itself — the normal stock phase handles that turn
+    if (id.jokerForm === 'universal') return undefined;
+    jokers.push(stage.stock[i]);
+  }
+  const stockUid = stage.stock[i];
+  if (!stockUid) return undefined;
+  const sid = identityOf(ctx, stockUid);
+  const month = sharedMonths(ctx, uid, option.targetUids, option.month).find(
+    (m) => sid.wild || sid.matchMonths.includes(m) || sid.scoringMonths.includes(m),
+  );
+  if (month === undefined) return undefined;
+  const rest = stage.field.filter((f) => !option.targetUids.includes(f));
+  if (getCaptureOptions(ctx, stockUid, rest).some((o) => o.kind !== 'place')) return undefined;
+  return { jokers, stockUid, month };
+}
+
+function ppeokKind(stage: StageState): PpeokKind {
+  if (stage.ppeokCount + 1 === 3) return 'triple';
+  if (stage.lastPpeokTurn !== undefined && stage.lastPpeokTurn === stage.turn - 1) return 'chain';
+  if (stage.turn === 1) return 'first';
+  return 'normal';
+}
+
+function resolvePpeok(ctx: GameContext, uid: string, option: CaptureOption, plan: PpeokPlan, shakeMonth?: Month): void {
+  const stage = ctx.stage!;
+  openChain(ctx, `${stage.turn}턴 · ${identityOf(ctx, uid).name}`);
+  stage.hand.splice(stage.hand.indexOf(uid), 1);
+  stage.turnState.playedUid = uid;
+  const roots: GameEventPayload[] = [{ type: 'CARD_PLAYED', cardUid: uid }, ...uncoverMatching(ctx, uid)];
+  if (shakeMonth !== undefined) roots.push({ type: 'SHAKE_DECLARED', month: shakeMonth, cause: 'shake' });
+  processEvents(ctx, roots.map((payload) => ({ payload })));
+  for (const j of plan.jokers) {
+    stage.stock.splice(stage.stock.indexOf(j), 1);
+    const actionId = stage.nextActionId++;
+    processEvents(
+      ctx,
+      [
+        { type: 'STOCK_REVEALED', cardUid: j },
+        { type: 'JOKER_REVEALED', cardUid: j },
+        { type: 'CARD_CAPTURED', cardUid: j, from: 'service', actionId },
+      ].map((payload) => ({ payload: payload as GameEventPayload })),
+    );
+  }
+  const s = plan.stockUid;
+  stage.stock.splice(stage.stock.indexOf(s), 1);
+  const target = option.targetUids[0];
+  const at = stage.field.indexOf(target);
+  // keep the pile together on the field: hand card and stock card land right after their partner
+  stage.field.splice(at >= 0 ? at + 1 : stage.field.length, 0, uid, s);
+  const kind = ppeokKind(stage);
+  processEvents(
+    ctx,
+    [
+      { type: 'STOCK_REVEALED', cardUid: s } as GameEventPayload,
+      ...uncoverMatching(ctx, s),
+      { type: 'PPEOK', month: plan.month, cardUids: [target, uid, s], kind } as GameEventPayload,
+    ].map((payload) => ({ payload })),
+  );
+}
+
 // ------------------------------------------------------------------ stage start
 
 export function createStage(run: RunState, stageIndex: number): void {
@@ -162,6 +298,10 @@ export function createStage(run: RunState, stageIndex: number): void {
     longestChain: 0,
     overflowed: false,
     handOrderSeed: 0,
+    ppeokPiles: [],
+    ppeokCount: 0,
+    bonusPi: 0,
+    shakeCount: 0,
   };
   run.modifiers.nextStageExchangeBonus = 0;
   run.modifiers.nextStageGlobalAdd = 0;
@@ -185,14 +325,31 @@ export function createStage(run: RunState, stageIndex: number): void {
     const actionId = stage.nextActionId++;
     roots.push({ type: 'JOKER_REVEALED', cardUid: joker }, { type: 'CARD_CAPTURED', cardUid: joker, from: 'service', actionId });
   }
-  // 총통: four or more cards of one month in the opening hand
+  // 총통: four or more cards of one month (or all five 광) in the opening hand. The real game lets the
+  // holder end the hand on the spot or play on as 흔들기 + 폭탄; a roguelike stage is won on score, so
+  // 총통 always plays on: a bonus plus two 흔들기 stacks.
   const monthCounts = new Map<Month, number>();
+  let brights = 0;
   for (const u of stage.hand) {
     const id = identityOf(ctx, u);
-    if (id.joker || !id.printedMonth) continue;
+    if (id.joker) continue;
+    if (id.bright) brights++;
+    if (!id.printedMonth) continue;
     monthCounts.set(id.printedMonth, (monthCounts.get(id.printedMonth) ?? 0) + 1);
   }
-  for (const [m, n] of monthCounts) if (n >= 4) roots.push({ type: 'SPECIAL_CAPTURE', special: 'chongtong', month: m, count: n - 3 });
+  let chongtong = false;
+  for (const [m, n] of monthCounts) {
+    if (n < 4) continue;
+    roots.push({ type: 'SPECIAL_CAPTURE', special: 'chongtong', month: m, count: n - 3 });
+    chongtong = true;
+  }
+  if (brights >= 5) {
+    roots.push({ type: 'SPECIAL_CAPTURE', special: 'chongtong', count: 1 });
+    chongtong = true;
+  }
+  if (chongtong && rules.shake) {
+    roots.push({ type: 'SHAKE_DECLARED', cause: 'chongtong' }, { type: 'SHAKE_DECLARED', cause: 'chongtong' });
+  }
   processEvents(ctx, roots.map((payload) => ({ payload })));
   closeChain(ctx);
   beginTurn(ctx);
@@ -245,13 +402,14 @@ export function canExchange(run: RunState, uid: string): ExchangeCheck {
 
 // ------------------------------------------------------------------ actions
 
-function resolveHandPlay(ctx: GameContext, uid: string, option: CaptureOption): void {
+function resolveHandPlay(ctx: GameContext, uid: string, option: CaptureOption, shakeMonth?: Month): void {
   const stage = ctx.stage!;
   openChain(ctx, `${stage.turn}턴 · ${identityOf(ctx, uid).name}`);
   const idx = stage.hand.indexOf(uid);
   if (idx >= 0) stage.hand.splice(idx, 1);
   stage.turnState.playedUid = uid;
   const roots: GameEventPayload[] = [{ type: 'CARD_PLAYED', cardUid: uid }, ...uncoverMatching(ctx, uid)];
+  if (shakeMonth !== undefined) roots.push({ type: 'SHAKE_DECLARED', month: shakeMonth, cause: 'shake' });
   if (option.kind === 'place') {
     stage.field.push(uid);
     stage.turnState.playedPlaced = true;
@@ -265,7 +423,7 @@ function resolveHandPlay(ctx: GameContext, uid: string, option: CaptureOption): 
     roots.push({ type: 'CARD_CAPTURED', cardUid: uid, from: 'hand', partnerUid: option.targetUids[0], actionId });
     for (const t of option.targetUids) roots.push({ type: 'CARD_CAPTURED', cardUid: t, from: 'hand', partnerUid: uid, actionId });
     roots.push({ type: 'CARD_MATCHED', cardUid: uid, targetUids: option.targetUids, from: 'hand' });
-    if (option.kind === 'stack') roots.push({ type: 'SPECIAL_CAPTURE', special: 'stack', month: option.month, count: 1 });
+    roots.push(...stackSpecials(stage, option.targetUids, option.month, option.kind === 'stack'));
   }
   processEvents(ctx, roots.map((payload) => ({ payload })));
 }
@@ -284,11 +442,12 @@ function resolveStockCapture(ctx: GameContext, s: string, option: CaptureOption,
     roots.push({ type: 'CARD_CAPTURED', cardUid: s, from: 'stock', partnerUid: option.targetUids[0], actionId });
     for (const t of option.targetUids) roots.push({ type: 'CARD_CAPTURED', cardUid: t, from: 'stock', partnerUid: s, actionId });
     roots.push({ type: 'CARD_MATCHED', cardUid: s, targetUids: option.targetUids, from: 'stock' });
-    if (option.kind === 'stack') roots.push({ type: 'SPECIAL_CAPTURE', special: 'stack', month: option.month, count: 1 });
+    roots.push(...stackSpecials(stage, option.targetUids, option.month, option.kind === 'stack'));
     if (ts.playedPlaced && ts.playedUid && option.targetUids.includes(ts.playedUid)) {
       roots.push({ type: 'SPECIAL_CAPTURE', special: 'jjok', month: months[0] });
     } else if (!ts.playedPlaced && ts.handCaptureSingle && months.some((m) => ts.handCaptureMonths.includes(m))) {
       roots.push({ type: 'SPECIAL_CAPTURE', special: 'ttadak', month: months[0] });
+      if (stage.turn === 1) roots.push({ type: 'SPECIAL_CAPTURE', special: 'firstTtadak', month: months[0] });
     }
   }
   processEvents(ctx, roots.map((payload) => ({ payload })));
@@ -342,12 +501,14 @@ function resolveUniversal(ctx: GameContext, s: string, option: CaptureOption): v
   const actionId = stage.nextActionId++;
   const roots: GameEventPayload[] = [{ type: 'CARD_CAPTURED', cardUid: s, from: 'service', partnerUid: option.targetUids[0], actionId }];
   for (const t of option.targetUids) roots.push({ type: 'CARD_CAPTURED', cardUid: t, from: 'service', partnerUid: s, actionId });
+  roots.push(...stackSpecials(stage, option.targetUids, option.month, false));
   stage.captureActions.push({ id: actionId, months: sharedMonths(ctx, s, option.targetUids, option.month) });
   processEvents(ctx, roots.map((payload) => ({ payload })));
 }
 
 function finishTurn(ctx: GameContext): void {
   const stage = ctx.stage!;
+  takePpeokPiles(stage, []);
   const roots: GameEventPayload[] = [];
   if (stage.turnState.fieldHadCards && stage.field.length === 0) roots.push({ type: 'SPECIAL_CAPTURE', special: 'sweep' });
   roots.push({ type: 'TURN_ENDED', turn: stage.turn });
@@ -400,8 +561,15 @@ export function playCard(run: RunState, uid: string, optionId?: string): RunStat
   }
   stage.pending = undefined;
   stage.phase = 'play';
-  resolveHandPlay(ctx, uid, option);
-  if (runStockPhase(ctx) === 'done') finishTurn(ctx);
+  const shakeMonth = shakeMonthFor(ctx, uid);
+  const ppeok = planPpeok(ctx, uid, option);
+  if (ppeok) {
+    resolvePpeok(ctx, uid, option, ppeok, shakeMonth);
+    finishTurn(ctx);
+  } else {
+    resolveHandPlay(ctx, uid, option, shakeMonth);
+    if (runStockPhase(ctx) === 'done') finishTurn(ctx);
+  }
   commit(ctx);
   return next;
 }
@@ -461,9 +629,12 @@ export function playBomb(run: RunState, month: Month): RunState {
   stage.turnState.playedUid = opt.handUids[0];
   const roots: GameEventPayload[] = [];
   for (const u of opt.handUids) roots.push({ type: 'CARD_PLAYED', cardUid: u });
+  // 폭탄 counts as 흔들기: the multiplier is on before the bomb's own cards score
+  if (effectiveRules(ctx).shake) roots.push({ type: 'SHAKE_DECLARED', month, cause: 'bomb' });
   for (const u of [...opt.handUids, ...opt.fieldUids]) roots.push({ type: 'CARD_CAPTURED', cardUid: u, from: 'bomb', actionId });
   roots.push({ type: 'CARD_MATCHED', cardUid: opt.handUids[0], targetUids: opt.fieldUids, from: 'hand' });
   roots.push({ type: 'SPECIAL_CAPTURE', special: 'bomb', month, count: opt.handUids.length - 2 });
+  roots.push(...stackSpecials(stage, opt.fieldUids, month, false));
   processEvents(ctx, roots.map((payload) => ({ payload })));
   const draws: GameEventPayload[] = [];
   for (let i = 0; i < opt.handUids.length - 1; i++) {
