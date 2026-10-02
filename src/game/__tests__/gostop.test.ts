@@ -12,6 +12,7 @@ import {
   newRun,
   playBomb,
   playCard,
+  pushOp,
   shakeableMonths,
   shakeMonthOf,
   serializeRun,
@@ -264,5 +265,19 @@ describe('save migration', () => {
     expect(loaded.stage!.shakeCount).toBe(0);
     // and the loaded run still plays
     expect(playCard(loaded, uidOf(run, 'm01-bright')).stage!.captured.length).toBeGreaterThan(0);
+  });
+
+  it('v2 saves count the 비 ribbon and keep picked identity operations exact', () => {
+    const run = setupStage({ hand: ['m01-bright'], field: ['m01-pi-a'], stock: ['m11-pi-a'] });
+    run.rules.rainRibbonCountsAsRibbon = false;
+    pushOp(run, { kind: 'monthShift', title: '달 염색', description: '', source: 'shop', count: 1, cancellable: true, then: [] });
+    pushOp(run, { kind: 'upgradeCard', title: '강화', description: '', source: 'shop', count: 1, cancellable: true, then: [] });
+    const file = JSON.parse(serializeRun(run));
+    file.version = 2;
+    const loaded = deserializeRun(JSON.stringify(file))!;
+    expect(loaded.version).toBe(3);
+    expect(loaded.rules.rainRibbonCountsAsRibbon).toBe(true);
+    expect(loaded.ops[0].exact).toBe(true);
+    expect(loaded.ops[1].exact).toBeUndefined();
   });
 });
