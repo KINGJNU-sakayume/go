@@ -39,9 +39,10 @@ talismans, Jokbo levels, jump to stage, force rewards, inspect the last trigger 
     to take — all three stay stacked on the field and nothing is captured. **첫뻑 / 연뻑** pay 엽전 like
     the table pays money; **삼뻑** (third of the stage) pays more and lifts the score to the target
     (the real game's instant win). The fourth card of that month eats the pile: **자뻑 먹기** (bonus + 2 피).
-  - **흔들기**: playing a card while holding three of its month (none on the field) shakes automatically —
-    every later score this stage ×2. **폭탄** counts as a shake, **총통** (four of a month or all five 광 in
-    the opening hand) as two. Stacks multiply up to 3 (×8).
+  - **흔들기**: holding three of a month with none on the field, press **흔들기!** (or just play a card of
+    that month) — the stage score is doubled like the real game's 판 점수 ×2: the score so far right away,
+    every later score through the multiplier. **폭탄** counts as a shake, **총통** (four of a month or all
+    five 광 in the opening hand) as two. Stacks multiply up to 3 (×8).
   - Not adapted: 총통's optional instant win (stages are won on score), opponent penalties (광박/피박/멍박)
     and the last-turn exception for 피 뺏기 — there is no opponent to pay.
 - **교환 (Exchange)**: discard a hand card and draw one (2 per stage by default).

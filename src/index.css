@@ -72,6 +72,10 @@ body {
   background: linear-gradient(#2f6fdb, #1d4596);
   color: #fff;
 }
+.btn-pink {
+  background: linear-gradient(#db2777, #9d174d);
+  color: #fff1f7;
+}
 
 .card-hover {
   transition: transform 0.12s ease, box-shadow 0.12s ease;
